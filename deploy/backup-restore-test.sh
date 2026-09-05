@@ -15,7 +15,8 @@ chmod 700 "${OFFBOX}"
 
 echo "dumping"
 ssh "${HOST}" 'sudo /usr/local/sbin/keycloak-pg-dump.sh'
-remote_dump="$(ssh "${HOST}" 'sudo ls -1t /var/backups/keycloak/keycloak-*.dump | head -1')"
+# glob must expand as root: /var/backups/keycloak is 750 postgres:postgres
+remote_dump="$(ssh "${HOST}" "sudo bash -c 'ls -1t /var/backups/keycloak/keycloak-*.dump 2>/dev/null | head -1'")"
 if [[ -z "${remote_dump}" ]]; then
   echo "FAIL: no dump on host" >&2
   exit 1
@@ -30,8 +31,11 @@ ssh "${HOST}" "sudo bash -s -- '${remote_dump}'" <<'REMOTE'
 set -euo pipefail
 DUMP="$1"
 systemctl stop keycloak
-# compose down to drop the JDBC session
-docker compose --project-directory /opt/auth.qa.guru -f /opt/auth.qa.guru/docker-compose.yml down || true
+# compose down to drop the JDBC session (both files — same project as systemd)
+docker compose --project-directory /opt/auth.qa.guru \
+  --env-file /etc/keycloak/keycloak.env \
+  -f /opt/auth.qa.guru/docker-compose.yml \
+  -f /opt/auth.qa.guru/docker-compose.prod.yml down || true
 sudo -u postgres dropdb --if-exists keycloak
 sudo -u postgres createdb -O keycloak keycloak
 sudo -u postgres pg_restore --exit-on-error -d keycloak "${DUMP}"

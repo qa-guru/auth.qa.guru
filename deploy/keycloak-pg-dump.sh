@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 # Daily Keycloak pg_dump. Runs as root via systemd. Dump is local + optional S3.
 # Hetzner Object Storage keys from the 2026-07 audit were revoked (InvalidAccessKeyId);
 # drop /etc/keycloak/s3.env (root 600) when a working bucket exists.

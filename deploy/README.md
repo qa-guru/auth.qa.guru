@@ -26,3 +26,4 @@ python3 ./deploy/configure-dns.py --apply
 `bootstrap-host.sh` ставит ufw, PostgreSQL (пакет), Docker, nginx, certbot.
 `install.sh` кладёт env 600, создаёт роль БД, копирует realm из wrapper, поднимает Keycloak.
 `configure-tls.sh` ставит LE и **обязательный** deploy-hook `nginx -t && systemctl reload nginx`.
+S3-загрузка dump опциональна (`/etc/keycloak/s3.env`); критерий P2a — off-box копия + restore.
