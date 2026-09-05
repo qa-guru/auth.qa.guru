@@ -5,10 +5,34 @@
 # 1. dump on the host
 # 2. copy the dump off-box (operator ~/.config/auth-qa-guru/backups/)
 # 3. drop+restore the live database, restart Keycloak, wait health
+#
+# THIS SCRIPT DROPS THE LIVE DATABASE. That was safe in P2a, when the realm was
+# empty by definition. It is not safe now: the realm carries live people, and
+# `dropdb` would take everything created since the dump it restores. Once people
+# exist, restorability is proven non-destructively against a scratch database:
+#
+#   deploy/offbox.py restore-check
+#
+# The guard below refuses rather than trusting whoever runs this to remember.
 set -euo pipefail
 
 HOST="${AUTH_DEPLOY_HOST:-auth-qa-guru}"
 OFFBOX="${AUTH_BACKUP_DIR:-${HOME}/.config/auth-qa-guru/backups}"
+
+humans="$(ssh "${HOST}" "sudo -u postgres psql -d keycloak -Atc \"select count(*) from user_entity u join realm r on r.id = u.realm_id where r.name = 'qaguru' and u.service_account_client_link is null;\"")"
+if [[ "${humans}" != "0" && "${ALLOW_DESTRUCTIVE_RESTORE:-}" != "yes" ]]; then
+  cat >&2 <<EOF
+REFUSING: realm qaguru holds ${humans} live people and this script drops the database.
+
+Prove restorability without touching prod:
+  python3 deploy/offbox.py restore-check
+
+If a real disaster restore is genuinely intended, take a dump of the CURRENT
+state first (ADR 017 §гейт сохранности п. 5), then:
+  ALLOW_DESTRUCTIVE_RESTORE=yes $0
+EOF
+  exit 2
+fi
 
 mkdir -p "${OFFBOX}"
 chmod 700 "${OFFBOX}"

@@ -14,6 +14,7 @@ Production **Keycloak** IdP — [https://auth.qa.guru](https://auth.qa.guru)
 | БД | PostgreSQL **нативный пакет + systemd** (не контейнер: docker-published порты обходят ufw) |
 | Секреты | `/etc/keycloak/keycloak.env` root 600 — **не Vault** |
 | Passkey RP ID | `qa.guru` (общий родитель) |
+| Бэкап | суточный `pg_dump` → Selectel S3 (`deploy/offbox.py`); off-box копия обязательна, её отсутствие валит юнит |
 | SSH | `ssh auth-qa-guru` |
 
 ## Структура
@@ -24,6 +25,8 @@ Production **Keycloak** IdP — [https://auth.qa.guru](https://auth.qa.guru)
 | [`docker-compose.yml`](docker-compose.yml) | только Keycloak, `network_mode: host`, HTTP `127.0.0.1:8080` |
 | [`nginx/auth.qa.guru.nginx`](nginx/auth.qa.guru.nginx) | TLS vhost → loopback |
 | [`deploy/`](deploy/) | bootstrap, DNS, TLS, backup, smoke |
+| [`deploy/offbox.py`](deploy/offbox.py) | off-box приёмник: provision / status / verify / restore-check |
+| [`deploy/s3.py`](deploy/s3.py) | SigV4 S3 на stdlib (ставится рядом с dump-скриптом в `/usr/local/sbin/`) |
 
 Секреты (не в git): `~/.config/auth-qa-guru/keycloak.env`.
 

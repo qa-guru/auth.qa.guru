@@ -37,6 +37,8 @@ scp -q "${SCRIPT_DIR}/keycloak.service" "${HOST}:/tmp/keycloak.service"
 scp -q "${SCRIPT_DIR}/keycloak-pg-dump.sh" "${HOST}:/tmp/keycloak-pg-dump.sh"
 scp -q "${SCRIPT_DIR}/keycloak-pg-dump.service" "${HOST}:/tmp/keycloak-pg-dump.service"
 scp -q "${SCRIPT_DIR}/keycloak-pg-dump.timer" "${HOST}:/tmp/keycloak-pg-dump.timer"
+# The dump script resolves s3.py next to itself, so they install as a pair.
+scp -q "${SCRIPT_DIR}/s3.py" "${HOST}:/tmp/s3.py"
 
 ssh "${HOST}" 'sudo bash -s' <<'REMOTE'
 set -euo pipefail
@@ -62,9 +64,10 @@ fi
 
 install -m 644 /tmp/keycloak.service /etc/systemd/system/keycloak.service
 install -m 755 /tmp/keycloak-pg-dump.sh /usr/local/sbin/keycloak-pg-dump.sh
+install -m 755 /tmp/s3.py /usr/local/sbin/s3.py
 install -m 644 /tmp/keycloak-pg-dump.service /etc/systemd/system/keycloak-pg-dump.service
 install -m 644 /tmp/keycloak-pg-dump.timer /etc/systemd/system/keycloak-pg-dump.timer
-rm -f /tmp/keycloak.service /tmp/keycloak-pg-dump.sh /tmp/keycloak-pg-dump.service /tmp/keycloak-pg-dump.timer
+rm -f /tmp/keycloak.service /tmp/keycloak-pg-dump.sh /tmp/s3.py /tmp/keycloak-pg-dump.service /tmp/keycloak-pg-dump.timer
 
 systemctl daemon-reload
 systemctl enable --now keycloak-pg-dump.timer
