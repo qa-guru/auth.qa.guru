@@ -27,4 +27,6 @@ Production **Keycloak** IdP — [https://auth.qa.guru](https://auth.qa.guru)
 
 Секреты (не в git): `~/.config/auth-qa-guru/keycloak.env`.
 
+P2b: в realm `qaguru` живут пилотные `svasenkov` и `student-pilot` (не стендовые demo). `verify-prod.py` это учитывает.
+
 Monorepo wrapper: `projects/services-home/auth-qa-guru-home/`.

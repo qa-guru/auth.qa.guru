@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""P2a acceptance: running prod realm matches ADR 017, with an empty people list.
+"""P2a/P2b acceptance: running prod realm matches ADR 017.
 
-Unlike the stand verifier this does not require GitHub login or demo users.
+P2b added two pilot people (svasenkov, student-pilot). Stand demos stay off prod.
 GitHub brokering stays a P5 item.
 
   AUTH_ENV=~/.config/auth-qa-guru/keycloak.env python3 deploy/verify-prod.py
@@ -29,6 +29,7 @@ WRAPPER_REALM = Path(__file__).resolve().parents[2] / "dev" / "realm" / "qaguru-
 ENV_FILE = Path(os.environ.get("AUTH_ENV", Path.home() / ".config/auth-qa-guru/keycloak.env"))
 PLACEHOLDER = re.compile(r"^\$\{[A-Z0-9_]+\}$")
 SECRET_KEYS = {"secret", "clientSecret", "value", "password"}
+PILOT = {"svasenkov", "student-pilot"}
 DEMO = {"student-demo", "mentor-demo", "staff-demo"}
 
 checks: list[tuple[str, bool, str]] = []
@@ -130,7 +131,8 @@ def main() -> int:
     users = http_json(f"{BASE}/admin/realms/{REALM}/users?briefRepresentation=true&max=200", token=token)
     names = {u.get("username") for u in users} if isinstance(users, list) else set()
     check("no stand demo people", not (names & DEMO), ", ".join(sorted(names & DEMO)))
-    check("realm is empty of people", names <= {"svc-provisioning"} or not names, ", ".join(sorted(n for n in names if n)))
+    unexpected = names - {"svc-provisioning"} - PILOT
+    check("people are the P2b pilot only", not unexpected, ", ".join(sorted(unexpected)))
 
     leaks = secrets_in_realm_file(WRAPPER_REALM) if WRAPPER_REALM.is_file() else ["realm file missing"]
     check("no secrets in the tracked realm file", not leaks, ", ".join(leaks))
