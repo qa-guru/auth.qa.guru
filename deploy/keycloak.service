@@ -1,0 +1,15 @@
+[Unit]
+Description=Keycloak IdP (auth.qa.guru)
+After=docker.service postgresql.service network-online.target
+Requires=docker.service postgresql.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/auth.qa.guru
+ExecStart=/usr/bin/docker compose --env-file /etc/keycloak/keycloak.env -f docker-compose.yml -f docker-compose.prod.yml up -d
+ExecStop=/usr/bin/docker compose -f docker-compose.yml -f docker-compose.prod.yml down
+TimeoutStartSec=600
+
+[Install]
+WantedBy=multi-user.target

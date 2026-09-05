@@ -1,0 +1,59 @@
+# SSOT public URL: https://auth.qa.guru
+# Upstream: Keycloak on loopback :8080 (host-network container, HTTP host 127.0.0.1).
+# Management :9000 stays loopback and is not proxied.
+# Map lives in this file (http context via sites-enabled include); Ubuntu 24.04
+# nginx.conf does not define $connection_upgrade.
+
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name auth.qa.guru;
+
+    location ^~ /.well-known/acme-challenge/ {
+        default_type text/plain;
+        root /var/www/html;
+        try_files $uri =404;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    # nginx 1.24 (Ubuntu 24.04): http2 is a listen parameter, not a standalone directive.
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name auth.qa.guru;
+
+    ssl_certificate     /etc/letsencrypt/live/auth.qa.guru/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/auth.qa.guru/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+
+    client_max_body_size 16m;
+    proxy_read_timeout 300s;
+    proxy_send_timeout 300s;
+    proxy_buffer_size 16k;
+    proxy_buffers 8 16k;
+
+    access_log /var/log/nginx/auth.qa.guru.access.log;
+    error_log  /var/log/nginx/auth.qa.guru.error.log;
+
+    location / {
+        include /etc/nginx/proxy_params;
+        proxy_pass http://127.0.0.1:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Forwarded-Port $server_port;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_buffering off;
+    }
+}

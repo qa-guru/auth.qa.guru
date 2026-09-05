@@ -1,0 +1,4 @@
+# Prod override — restart policy (DOCKER-CANON § multi-file)
+services:
+  keycloak:
+    restart: unless-stopped

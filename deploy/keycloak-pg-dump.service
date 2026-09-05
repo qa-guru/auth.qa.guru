@@ -1,0 +1,6 @@
+[Unit]
+Description=Keycloak PostgreSQL dump (auth.qa.guru)
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/keycloak-pg-dump.sh
