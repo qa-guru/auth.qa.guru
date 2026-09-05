@@ -125,7 +125,7 @@ def main() -> int:
         for c in http_json(f"{BASE}/admin/realms/{REALM}/clients", token=token)  # type: ignore[union-attr]
     }
     check("sonar speaks SAML", clients.get("sonar", {}).get("protocol") == "saml")
-    for name in ("grafana", "jenkins", "gitlab", "testops"):
+    for name in ("grafana", "jenkins", "gitlab", "testops", "oauth2-proxy"):
         check(f"{name} speaks OIDC", clients.get(name, {}).get("protocol") == "openid-connect")
 
     users = http_json(f"{BASE}/admin/realms/{REALM}/users?briefRepresentation=true&max=200", token=token)
