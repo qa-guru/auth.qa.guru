@@ -1,16 +1,21 @@
 #!/usr/bin/env python3
-"""P2a/P2b acceptance: running prod realm matches ADR 017.
+"""P2a–P4 acceptance: running prod realm matches ADR 017.
 
-P2b added two pilot people (svasenkov, student-pilot). Stand demos stay off prod.
-GitHub brokering stays a P5 item.
+The people check is a FLOOR, not an allowlist. P2b seeded two pilots and P4
+migrated 97 Jenkins people, so "only the pilots may exist" went red the moment
+the phase progressed and stopped being able to report a real regression. ADR 017
+§гейт сохранности asks the opposite question — did we lose anyone — so the gate
+counts down from AUTH_PEOPLE_FLOOR instead of enumerating who is allowed.
 
   AUTH_ENV=~/.config/auth-qa-guru/keycloak.env python3 deploy/verify-prod.py
+  AUTH_PEOPLE_FLOOR=99 python3 deploy/verify-prod.py
 """
 from __future__ import annotations
 
 import json
 import os
 import re
+import socket
 import ssl
 import sys
 import urllib.error
@@ -29,8 +34,13 @@ WRAPPER_REALM = Path(__file__).resolve().parents[2] / "dev" / "realm" / "qaguru-
 ENV_FILE = Path(os.environ.get("AUTH_ENV", Path.home() / ".config/auth-qa-guru/keycloak.env"))
 PLACEHOLDER = re.compile(r"^\$\{[A-Z0-9_]+\}$")
 SECRET_KEYS = {"secret", "clientSecret", "value", "password"}
-PILOT = {"svasenkov", "student-pilot"}
+PILOT = {"svasenkov", "student-pilot", "mentor-pilot"}
 DEMO = {"student-demo", "mentor-demo", "staff-demo"}
+# Humans in the realm at the close of P4. The gate fails when the count drops.
+PEOPLE_FLOOR = int(os.environ.get("AUTH_PEOPLE_FLOOR", "99"))
+# Embedded Infinispan ports. One node never clusters, so these must not answer
+# from the internet — KC_CACHE=local removes the listeners, ufw is the backstop.
+JGROUPS_PORTS = (7800, 57800)
 
 checks: list[tuple[str, bool, str]] = []
 
@@ -66,6 +76,18 @@ def http_json(url: str, *, token: str | None = None, data: bytes | None = None, 
     with urllib.request.urlopen(req, timeout=30, context=ssl_ctx()) as resp:
         raw = resp.read()
     return json.loads(raw) if raw else None
+
+
+def port_closed(host: str, port: int, timeout: float = 5.0) -> tuple[bool, str]:
+    """True when a TCP connect does not succeed. Run from off-host on purpose:
+    `ss` on the box proves the listener is gone, this proves the internet agrees."""
+    try:
+        with socket.create_connection((host, port), timeout=timeout):
+            return False, "connect succeeded"
+    except socket.timeout:
+        return True, "timeout (filtered)"
+    except OSError as exc:
+        return True, exc.strerror or str(exc)
 
 
 def secrets_in_realm_file(path: Path) -> list[str]:
@@ -128,11 +150,23 @@ def main() -> int:
     for name in ("grafana", "jenkins", "gitlab", "testops", "oauth2-proxy"):
         check(f"{name} speaks OIDC", clients.get(name, {}).get("protocol") == "openid-connect")
 
-    users = http_json(f"{BASE}/admin/realms/{REALM}/users?briefRepresentation=true&max=200", token=token)
+    users = http_json(f"{BASE}/admin/realms/{REALM}/users?briefRepresentation=true&max=1000", token=token)
     names = {u.get("username") for u in users} if isinstance(users, list) else set()
     check("no stand demo people", not (names & DEMO), ", ".join(sorted(names & DEMO)))
-    unexpected = names - {"svc-provisioning"} - PILOT
-    check("people are the P2b pilot only", not unexpected, ", ".join(sorted(unexpected)))
+
+    people = names - {"svc-provisioning"}
+    check(
+        f"people not lost (floor {PEOPLE_FLOOR})",
+        len(people) >= PEOPLE_FLOOR,
+        f"{len(people)} humans in realm",
+    )
+    missing_pilots = PILOT - names
+    check("pilot people still present", not missing_pilots, ", ".join(sorted(missing_pilots)))
+
+    host = urllib.parse.urlsplit(BASE).hostname or "auth.qa.guru"
+    for port in JGROUPS_PORTS:
+        closed, why = port_closed(host, port)
+        check(f"jgroups {port} closed from internet", closed, why)
 
     leaks = secrets_in_realm_file(WRAPPER_REALM) if WRAPPER_REALM.is_file() else ["realm file missing"]
     check("no secrets in the tracked realm file", not leaks, ", ".join(leaks))

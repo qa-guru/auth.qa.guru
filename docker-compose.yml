@@ -3,6 +3,12 @@
 # ports bypass ufw (load-sut graze). Host network + HTTP bind 127.0.0.1 so ufw
 # actually governs 80/443. Secrets come from /etc/keycloak/keycloak.env (root 600).
 # Realm JSON is copied at install from the monorepo wrapper's dev/realm/.
+#
+# KC_CACHE=local is load-bearing: with network_mode host the default 'ispn'
+# cache opens JGroups 7800 and FD_SOCK2 57800 on the public IP. One node never
+# forms a cluster, so the listeners are pure attack surface behind ufw.
+# 'cache' is a RUNTIME option in 26.7 (start --help-all), not a build option —
+# no image rebuild, but never add a second node without revisiting this.
 
 name: auth-qa-guru
 
@@ -17,6 +23,7 @@ services:
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://127.0.0.1:5432/keycloak
       KC_DB_USERNAME: keycloak
+      KC_CACHE: local
       KC_HOSTNAME: https://auth.qa.guru
       KC_HOSTNAME_STRICT: "true"
       KC_HTTP_ENABLED: "true"

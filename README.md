@@ -14,6 +14,7 @@ Production **Keycloak** IdP — [https://auth.qa.guru](https://auth.qa.guru)
 | БД | PostgreSQL **нативный пакет + systemd** (не контейнер: docker-published порты обходят ufw) |
 | Секреты | `/etc/keycloak/keycloak.env` root 600 — **не Vault** |
 | Passkey RP ID | `qa.guru` (общий родитель) |
+| Кэш | **`KC_CACHE=local`** — один узел не кластеризуется, а `ispn` при `network_mode: host` открывал JGroups 7800 / 57800 на публичном IP |
 | Бэкап | суточный `pg_dump` → Selectel S3 (`deploy/offbox.py`); off-box копия обязательна, её отсутствие валит юнит |
 | SSH | `ssh auth-qa-guru` |
 
@@ -30,6 +31,8 @@ Production **Keycloak** IdP — [https://auth.qa.guru](https://auth.qa.guru)
 
 Секреты (не в git): `~/.config/auth-qa-guru/keycloak.env`.
 
-P2b: в realm `qaguru` живут пилотные `svasenkov` и `student-pilot` (не стендовые demo). P3 добавил клиент `oauth2-proxy` (OIDC, Selenoid UI). `verify-prod.py` это учитывает.
+P2b: в realm `qaguru` живут пилотные `svasenkov` и `student-pilot` (не стендовые demo). P3 добавил клиент `oauth2-proxy` (OIDC, Selenoid UI). P4 смигрировал в realm людей Jenkins — сейчас **99 человек**.
+
+`verify-prod.py` считает людей **полом** (`AUTH_PEOPLE_FLOOR`, сейчас 99), а не allowlist-ом: проверка «в realm только пилоты» покраснела в тот же момент, когда фаза поехала дальше, и перестала ловить реальную потерю учёток. Гейт ADR 017 спрашивает обратное — не потеряли ли мы кого-то.
 
 Monorepo wrapper: `projects/services-home/auth-qa-guru-home/`.
