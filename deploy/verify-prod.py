@@ -137,6 +137,9 @@ def main() -> int:
     check("passkeys enabled", realm.get("webAuthnPolicyPasswordlessPasskeysEnabled") is True)
     check("RP ID is qa.guru", realm.get("webAuthnPolicyPasswordlessRpId") == "qa.guru", str(realm.get("webAuthnPolicyPasswordlessRpId")))
     check("password fallback kept", realm.get("resetPasswordAllowed") is True)
+    smtp = realm.get("smtpServer") or {}
+    check("smtp host set", bool(smtp.get("host")), str(smtp.get("host") or ""))
+    check("smtp from set", bool(smtp.get("from")), str(smtp.get("from") or ""))
 
     groups = http_json(f"{BASE}/admin/realms/{REALM}/groups", token=token)
     paths = {g["path"] for g in groups} if isinstance(groups, list) else set()

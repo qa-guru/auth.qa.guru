@@ -13,6 +13,7 @@ Production **Keycloak** IdP — [https://auth.qa.guru](https://auth.qa.guru)
 | Path | `/opt/auth.qa.guru` |
 | БД | PostgreSQL **нативный пакет + systemd** (не контейнер: docker-published порты обходят ufw) |
 | Секреты | `/etc/keycloak/keycloak.env` root 600 — **не Vault** |
+| SMTP | сброс по username, From `noreply@qaguru.ru` (Beget). `deploy/smtp.py`. `loginWithEmailAllowed` выкл. |
 | Passkey RP ID | `qa.guru` (общий родитель) |
 | Кэш | **`KC_CACHE=local`** — один узел не кластеризуется, а `ispn` при `network_mode: host` открывал JGroups 7800 / 57800 на публичном IP |
 | Бэкап | суточный `pg_dump` → Selectel S3 (`deploy/offbox.py`); off-box копия обязательна, её отсутствие валит юнит |
@@ -27,11 +28,11 @@ Production **Keycloak** IdP — [https://auth.qa.guru](https://auth.qa.guru)
 | [`nginx/auth.qa.guru.nginx`](nginx/auth.qa.guru.nginx) | TLS vhost → loopback |
 | [`deploy/`](deploy/) | bootstrap, DNS, TLS, backup, smoke |
 | [`deploy/offbox.py`](deploy/offbox.py) | off-box приёмник: provision / status / verify / restore-check |
-| [`deploy/s3.py`](deploy/s3.py) | SigV4 S3 на stdlib (ставится рядом с dump-скриптом в `/usr/local/sbin/`) |
+| [`deploy/smtp.py`](deploy/smtp.py) | SMTP сброса пароля: apply / test / probe-reset / send-reset (один username) |
 
 Секреты (не в git): `~/.config/auth-qa-guru/keycloak.env`.
 
-P2b: в realm `qaguru` живут пилотные `svasenkov` и `student-pilot` (не стендовые demo). P3 добавил клиент `oauth2-proxy` (OIDC, Selenoid UI). P4 смигрировал в realm людей Jenkins — сейчас **99 человек**.
+P2b: в realm `qaguru` живут пилотные `svasenkov` и `student-pilot` (не стендовые demo). P3 добавил клиент `oauth2-proxy` (OIDC, Selenoid UI). P4 смигрировал в realm людей Jenkins — сейчас **100 человек** (пол `AUTH_PEOPLE_FLOOR=99`).
 
 `verify-prod.py` считает людей **полом** (`AUTH_PEOPLE_FLOOR`, сейчас 99), а не allowlist-ом: проверка «в realm только пилоты» покраснела в тот же момент, когда фаза поехала дальше, и перестала ловить реальную потерю учёток. Гейт ADR 017 спрашивает обратное — не потеряли ли мы кого-то.
 

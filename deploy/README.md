@@ -21,6 +21,7 @@ python3 ./deploy/configure-dns.py --apply
 ./deploy/configure-tls.sh
 ./deploy/backup-restore-test.sh
 ./deploy/smoke.sh
+python3 ./deploy/smtp.py apply
 ```
 
 `bootstrap-host.sh` ставит ufw, PostgreSQL (пакет), Docker, nginx, certbot.
@@ -29,6 +30,19 @@ python3 ./deploy/configure-dns.py --apply
 
 `backup-restore-test.sh` **дропает живую БД** — он для пустого realm (критерий P2a). На
 заполненном realm он refuse; restorability проверяется неразрушающе через `offbox.py restore-check`.
+
+## SMTP (сброс пароля)
+
+Кнопка «Забыли пароль?» уже в realm. Секрет — `~/.config/auth-qa-guru/smtp.env` (600), его `apply` вливает в `keycloak.env` и на хост. Сброс **по username**; `loginWithEmailAllowed` не включать. Не рассылать на realm — только один username.
+
+From — `noreply@qaguru.ru`: Beget SMTP требует MX Beget, а у `qa.guru` MX на Яндексе.
+
+```bash
+python3 deploy/smtp.py apply
+python3 deploy/smtp.py test --email <один-свой-ящик>
+python3 deploy/smtp.py probe-reset    # одна учётка, IMAP, смена пароля, удаление
+python3 deploy/smtp.py send-reset <username>
+```
 
 ## Off-box бэкап
 
