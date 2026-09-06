@@ -7,11 +7,12 @@ realm with 99 live people whose only backups were two 250 KB dumps of an *empty*
 realm sitting on the same disk as the database. "Off-box backup" was a line in a
 plan, not a file anywhere else.
 
-Receiver is Selectel Object Storage (pool ru-1, path-style). The writer is a
-dedicated service user with role `s3.admin` scoped to one project: it can manage
-buckets there and nothing else in the account. `s3.user` / `s3.bucket.user` would
-also work but only alongside a bucket policy, which is a second thing to get
-wrong for no gain here.
+Receiver is Selectel Object Storage (pool ru-1). The writer is a dedicated
+service user with role `s3.admin` scoped to one project. An IAM S3 key is
+useless until the project has a storage account — that means one bucket
+created in the panel; before that S3 answers InvalidAccessKeyId.
+Retention is container `default-delete-after`: Selectel does not implement
+S3 Lifecycle. `s3.user` / `s3.bucket.user` work only with a bucket policy.
 
 Secrets never touch git, argv or the chat: the S3 key is written straight to
 /etc/keycloak/s3.env (root 600) over stdin, mirroring ADR 017 п. 12.
@@ -231,14 +232,13 @@ def cmd_provision(args: argparse.Namespace) -> int:
     print(f"wrote {S3_ENV} on {HOST} (root 600)")
 
     print(ssh(f"set -e; sudo bash -c 'set -a; . {S3_ENV}; set +a; python3 /usr/local/sbin/s3.py make-bucket'"))
-    print(ssh(f"set -e; sudo bash -c 'set -a; . {S3_ENV}; set +a; "
-              f"python3 /usr/local/sbin/s3.py set-lifecycle --days {args.retention_days}'"))
+    _set_object_lifetime(args.retention_days)
     ssh(f"sudo rm -f /etc/keycloak/backup-local-only")
     return 0
 
 
 def cmd_status(_: argparse.Namespace) -> int:
-    configured = ssh(f"test -f {S3_ENV} && echo yes || echo no")
+    configured = ssh(f"sudo test -f {S3_ENV} && echo yes || echo no")
     print(f"off-box configured: {configured}")
     if configured != "yes":
         print(f"  (local-only marker: {ssh('test -f /etc/keycloak/backup-local-only && echo present || echo absent')})")
@@ -253,10 +253,10 @@ def cmd_verify(_: argparse.Namespace) -> int:
     """Run the real unit and prove a NEW object appeared off-box."""
     before = ssh(f"sudo bash -c 'set -a; . {S3_ENV}; set +a; python3 /usr/local/sbin/s3.py list' | wc -l")
     ssh("sudo systemctl start keycloak-pg-dump.service")
-    log = ssh("sudo journalctl -u keycloak-pg-dump.service -n 15 --no-pager")
+    log = ssh("sudo journalctl -u keycloak-pg-dump.service -n 20 --no-pager --since '-2 min'")
     print(log)
-    if "Failed" in log or "FAIL" in log:
-        die("the dump unit reported failure")
+    if "uploaded s3://" not in log:
+        die("the dump unit ran but no object was uploaded")
     after_raw = ssh(f"sudo bash -c 'set -a; . {S3_ENV}; set +a; python3 /usr/local/sbin/s3.py list'")
     print(after_raw)
     if int(after_raw.count("\n")) + 1 <= int(before):
@@ -332,10 +332,71 @@ sudo rm -f /var/lib/postgresql/offbox-check.dump {remote_tmp}
     return 0 if ok else 1
 
 
+def _project_token() -> str:
+    """Project-scoped token for Swift / Object Storage API (not the S3 key)."""
+    if not IAM_FILE.is_file():
+        die(f"{IAM_FILE} missing")
+    iam = json.loads(IAM_FILE.read_text())
+    body = {
+        "auth": {
+            "identity": {
+                "methods": ["password"],
+                "password": {
+                    "user": {
+                        "name": iam["username"],
+                        "domain": {"name": str(iam["account_id"])},
+                        "password": iam["password"],
+                    }
+                },
+            },
+            "scope": {"project": {"id": PROJECT_ID}},
+        }
+    }
+    req = urllib.request.Request(
+        f"{IDENTITY}/auth/tokens",
+        data=json.dumps(body).encode(),
+        method="POST",
+        headers={"Content-Type": "application/json"},
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=60, context=ctx()) as resp:
+            token = resp.headers.get("X-Subject-Token")
+    except urllib.error.HTTPError as exc:
+        die(f"project auth failed {exc.code}: {exc.read()[:200]!r}")
+    if not token:
+        die("project auth returned no X-Subject-Token")
+    return token
+
+
+def _set_object_lifetime(days: int) -> None:
+    """Selectel S3 Lifecycle is unsupported; retention is container default-delete-after."""
+    seconds = days * 24 * 3600
+    token = _project_token()
+    url = f"https://swift.{POOL}.storage.selcloud.ru/v1/{PROJECT_ID}/{BUCKET}"
+    headers = {
+        "Accept": "application/json",
+        "X-Auth-Token": token,
+        "X-Container-Meta-Default-Delete-After": str(seconds),
+    }
+    req = urllib.request.Request(url, method="POST", headers=headers)
+    try:
+        with urllib.request.urlopen(req, timeout=60, context=ctx()) as resp:
+            code = resp.status
+            body = resp.read()[:200]
+    except urllib.error.HTTPError as exc:
+        die(f"set object lifetime -> {exc.code}: {exc.read()[:200]!r}")
+    if code not in (200, 202, 204):
+        die(f"set object lifetime -> {code} {body!r}")
+    check = f"https://api.{POOL}.storage.selcloud.ru/v2/containers/{BUCKET}/options"
+    got, _, opts = http(check, token=token)
+    lifetime = (opts.get("general") or {}).get("default_delete_after") if isinstance(opts, dict) else None
+    if got != 200 or lifetime != seconds:
+        die(f"object lifetime did not stick: {got} {opts}")
+    print(f"retention: objects expire after {days} days ({seconds}s)")
+
+
 def cmd_set_retention(args: argparse.Namespace) -> int:
-    print(ssh(f"sudo bash -c 'set -a; . {S3_ENV}; set +a; "
-              f"python3 /usr/local/sbin/s3.py set-lifecycle --days {args.days}'"))
-    print(ssh(f"sudo bash -c 'set -a; . {S3_ENV}; set +a; python3 /usr/local/sbin/s3.py get-lifecycle'"))
+    _set_object_lifetime(args.days)
     return 0
 
 
