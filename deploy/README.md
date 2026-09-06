@@ -35,7 +35,7 @@ python3 ./deploy/smtp.py apply
 
 Кнопка «Забыли пароль?» уже в realm. Секрет — `~/.config/auth-qa-guru/smtp.env` (600), его `apply` вливает в `keycloak.env` и на хост. Сброс **по username**; `loginWithEmailAllowed` не включать. Не рассылать на realm — только один username.
 
-From — `noreply@qaguru.ru`: Beget SMTP требует MX Beget, а у `qa.guru` MX на Яндексе.
+From — `noreply@qaguru.ru`: Beget требует MX Beget. MX `qa.guru` = `mx.yandex.net` — школьная почта в Яндексе, не трогать.
 
 ```bash
 python3 deploy/smtp.py apply
