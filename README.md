@@ -32,7 +32,7 @@ Production **Keycloak** IdP — [https://auth.qa.guru](https://auth.qa.guru)
 
 Секреты (не в git): `~/.config/auth-qa-guru/keycloak.env`.
 
-P2b: в realm `qaguru` живут пилотные `svasenkov` и `student-pilot` (не стендовые demo). P3 добавил клиент `oauth2-proxy` (OIDC, Selenoid UI). P4 смигрировал в realm людей Jenkins — сейчас **100 человек** (пол `AUTH_PEOPLE_FLOOR=99`).
+P2b завёл живого staff `svasenkov` и `student-pilot`. Приёмка staff с 2026-09-07 — `staff-pilot` (как `mentor-pilot` / `student-pilot`), не пароль живого человека. P3 добавил клиент `oauth2-proxy`. P4 смигрировал людей Jenkins. Пол `AUTH_PEOPLE_FLOOR=99`.
 
 `verify-prod.py` считает людей **полом** (`AUTH_PEOPLE_FLOOR`, сейчас 99), а не allowlist-ом: проверка «в realm только пилоты» покраснела в тот же момент, когда фаза поехала дальше, и перестала ловить реальную потерю учёток. Гейт ADR 017 спрашивает обратное — не потеряли ли мы кого-то.
 

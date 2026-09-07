@@ -34,7 +34,7 @@ WRAPPER_REALM = Path(__file__).resolve().parents[2] / "dev" / "realm" / "qaguru-
 ENV_FILE = Path(os.environ.get("AUTH_ENV", Path.home() / ".config/auth-qa-guru/keycloak.env"))
 PLACEHOLDER = re.compile(r"^\$\{[A-Z0-9_]+\}$")
 SECRET_KEYS = {"secret", "clientSecret", "value", "password"}
-PILOT = {"svasenkov", "student-pilot", "mentor-pilot"}
+PILOT = {"svasenkov", "staff-pilot", "student-pilot", "mentor-pilot"}
 DEMO = {"student-demo", "mentor-demo", "staff-demo"}
 # Humans in the realm at the close of P4. The gate fails when the count drops.
 PEOPLE_FLOOR = int(os.environ.get("AUTH_PEOPLE_FLOOR", "99"))
