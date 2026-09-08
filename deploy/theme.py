@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Prod login theme qaguru — copy files into the running container, PUT loginTheme.
+"""Prod login theme qaguru — copy files, PUT loginTheme on qaguru and master.
 
-Does not stop Keycloak. Does not PUT clients. Does not LDAP / P9.
+Does not stop Keycloak. Does not PUT clients. Does not LDAP / P9. Does not change adminTheme.
 
   python3 deploy/theme.py apply
   python3 deploy/theme.py status
@@ -26,6 +26,7 @@ except ImportError:
     certifi = None  # type: ignore[assignment]
 
 REALM = "qaguru"
+MASTER = "master"
 THEME = "qaguru"
 AUTH_URL = os.environ.get("AUTH_URL", "https://auth.qa.guru").rstrip("/")
 HOST = os.environ.get("AUTH_SSH", "auth-qa-guru")
@@ -35,13 +36,19 @@ AUTH_ENV_FILE = Path(os.environ.get("AUTH_ENV", Path.home() / ".config/auth-qa-g
 LIVE_STAFF = "svasenkov"
 PKCE = "code_challenge_method=S256&code_challenge=E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM"
 DROP_FROM_REALM_PUT = ("clients", "users", "groups", "identityProviders", "components", "authenticationFlows")
-FORM_NEEDLES = (
+SCHOOL_NEEDLES = (
     'id="kc-form-login"',
     'id="username"',
     'id="password"',
     'id="kc-login"',
     'id="authenticateWebAuthnButton"',
     "broker/github/login",
+)
+ADMIN_NEEDLES = (
+    'id="kc-form-login"',
+    'id="username"',
+    'id="password"',
+    'id="kc-login"',
 )
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -161,49 +168,64 @@ echo "container:$cid"
     return {"host": f"{REMOTE}/themes/{THEME}", "docker": remote.strip()}
 
 
-def client_ids(token: str) -> list[str]:
-    clients = kc("GET", f"/admin/realms/{REALM}/clients", token) or []
+def client_ids(token: str, realm: str) -> list[str]:
+    clients = kc("GET", f"/admin/realms/{realm}/clients", token) or []
     return sorted(c.get("clientId") or "" for c in clients)
 
 
-def apply_login_theme(env: dict[str, str]) -> dict[str, Any]:
+def apply_login_theme(env: dict[str, str], realm_name: str, *, school_guards: bool) -> dict[str, Any]:
     token = keycloak_token(env)
-    before = client_ids(token)
-    realm = kc("GET", f"/admin/realms/{REALM}", token)
-    if realm.get("loginWithEmailAllowed") is not False:
-        raise SystemExit("refusing: loginWithEmailAllowed is on")
-    if realm.get("resetPasswordAllowed") is not True:
-        raise SystemExit("refusing: resetPasswordAllowed is off")
+    before = client_ids(token, realm_name)
+    realm = kc("GET", f"/admin/realms/{realm_name}", token)
+    if school_guards:
+        if realm.get("loginWithEmailAllowed") is not False:
+            raise SystemExit(f"refusing {realm_name}: loginWithEmailAllowed is on")
+        if realm.get("resetPasswordAllowed") is not True:
+            raise SystemExit(f"refusing {realm_name}: resetPasswordAllowed is off")
     for key in DROP_FROM_REALM_PUT:
         realm.pop(key, None)
     realm["loginTheme"] = THEME
-    kc("PUT", f"/admin/realms/{REALM}", token, realm)
-    after_realm = kc("GET", f"/admin/realms/{REALM}", token)
-    after = client_ids(token)
+    kc("PUT", f"/admin/realms/{realm_name}", token, realm)
+    after_realm = kc("GET", f"/admin/realms/{realm_name}", token)
+    after = client_ids(token, realm_name)
     if after != before:
-        raise SystemExit("clients changed after loginTheme PUT — stopping")
+        raise SystemExit(f"clients changed on {realm_name} after loginTheme PUT — stopping")
+    if school_guards and after_realm.get("loginWithEmailAllowed") is not False:
+        raise SystemExit(f"theme applied on {realm_name} but loginWithEmailAllowed flipped on")
     return {
+        "realm": realm_name,
         "loginTheme": after_realm.get("loginTheme"),
         "accountTheme": after_realm.get("accountTheme"),
         "clients": len(after),
     }
 
 
-def fetch_login_html() -> str:
-    account = f"{AUTH_URL}/realms/{REALM}/account/"
-    url = (
-        f"{AUTH_URL}/realms/{REALM}/protocol/openid-connect/auth"
-        f"?client_id=account-console&redirect_uri={urllib.parse.quote(account, safe='')}"
-        f"&response_type=code&scope=openid&{PKCE}"
-    )
+def fetch_login_html(url: str) -> str:
     req = urllib.request.Request(url, headers={"Accept": "text/html", "User-Agent": "qa-guru-theme-check"})
     with urllib.request.urlopen(req, timeout=30, context=ssl_ctx()) as resp:
         return resp.read().decode("utf-8", "replace")
 
 
-def verify_html() -> dict[str, Any]:
-    html = fetch_login_html()
-    missing = [n for n in FORM_NEEDLES if n not in html]
+def school_login_url() -> str:
+    account = f"{AUTH_URL}/realms/{REALM}/account/"
+    return (
+        f"{AUTH_URL}/realms/{REALM}/protocol/openid-connect/auth"
+        f"?client_id=account-console&redirect_uri={urllib.parse.quote(account, safe='')}"
+        f"&response_type=code&scope=openid&{PKCE}"
+    )
+
+
+def admin_login_url() -> str:
+    console = f"{AUTH_URL}/admin/master/console/"
+    return (
+        f"{AUTH_URL}/realms/{MASTER}/protocol/openid-connect/auth"
+        f"?client_id=security-admin-console&redirect_uri={urllib.parse.quote(console, safe='')}"
+        f"&response_type=code&scope=openid&{PKCE}"
+    )
+
+
+def verify_html(html: str, needles: tuple[str, ...]) -> dict[str, Any]:
+    missing = [n for n in needles if n not in html]
     css_ok = f"/login/{THEME}/" in html and "css/login.css" in html
     ds_header = 'data-testid="header"' in html
     header_css = "css/header.css" in html and "css/shell.css" in html
@@ -220,9 +242,19 @@ def verify_html() -> dict[str, Any]:
 
 def cmd_apply() -> int:
     copied = copy_theme_to_host()
-    realm = apply_login_theme(auth_env())
-    html = verify_html()
-    result = {"ok": realm.get("loginTheme") == THEME and html["ok"], "copied": copied, "realm": realm, "html": html}
+    env = auth_env()
+    school = apply_login_theme(env, REALM, school_guards=True)
+    master = apply_login_theme(env, MASTER, school_guards=False)
+    html = verify_html(fetch_login_html(school_login_url()), SCHOOL_NEEDLES)
+    admin_html = verify_html(fetch_login_html(admin_login_url()), ADMIN_NEEDLES)
+    result = {
+        "ok": school.get("loginTheme") == THEME and master.get("loginTheme") == THEME and html["ok"] and admin_html["ok"],
+        "copied": copied,
+        "qaguru": school,
+        "master": master,
+        "html": html,
+        "admin_html": admin_html,
+    }
     print(json.dumps(result, ensure_ascii=False, indent=2))
     return 0 if result["ok"] else 1
 
@@ -230,13 +262,17 @@ def cmd_apply() -> int:
 def cmd_status() -> int:
     env = auth_env()
     token = keycloak_token(env)
-    realm = kc("GET", f"/admin/realms/{REALM}", token)
-    html = verify_html()
+    school = kc("GET", f"/admin/realms/{REALM}", token)
+    master = kc("GET", f"/admin/realms/{MASTER}", token)
+    html = verify_html(fetch_login_html(school_login_url()), SCHOOL_NEEDLES)
+    admin_html = verify_html(fetch_login_html(admin_login_url()), ADMIN_NEEDLES)
     health = ssh("curl -sf --max-time 5 http://127.0.0.1:9000/health/ready; echo; sudo docker inspect -f '{{.State.Running}} {{.Name}}' $(sudo docker ps -q --filter name=keycloak) | head -5")
     result = {
-        "ok": realm.get("loginTheme") == THEME and html["ok"],
-        "loginTheme": realm.get("loginTheme"),
+        "ok": school.get("loginTheme") == THEME and master.get("loginTheme") == THEME and html["ok"] and admin_html["ok"],
+        "loginTheme": school.get("loginTheme"),
+        "masterLoginTheme": master.get("loginTheme"),
         "html": html,
+        "admin_html": admin_html,
         "health": health.strip().splitlines()[:6],
     }
     print(json.dumps(result, ensure_ascii=False, indent=2))
