@@ -143,14 +143,16 @@ def main() -> int:
 
     groups = http_json(f"{BASE}/admin/realms/{REALM}/groups", token=token)
     paths = {g["path"] for g in groups} if isinstance(groups, list) else set()
-    check("people groups", {"/staff", "/mentors", "/students"} <= paths, ", ".join(sorted(paths)))
+    check("people groups", {"/staff", "/mentors", "/students", "/contour"} <= paths, ", ".join(sorted(paths)))
 
     clients = {
         c["clientId"]: c
         for c in http_json(f"{BASE}/admin/realms/{REALM}/clients", token=token)  # type: ignore[union-attr]
     }
     check("sonar speaks SAML", clients.get("sonar", {}).get("protocol") == "saml")
-    for name in ("grafana", "jenkins", "gitlab", "testops", "oauth2-proxy"):
+    check("jira speaks SAML", clients.get("https://jira.qa.guru", {}).get("protocol") == "saml")
+    check("confluence speaks SAML", clients.get("https://confluence.qa.guru", {}).get("protocol") == "saml")
+    for name in ("grafana", "jenkins", "gitlab", "testops", "oauth2-proxy", "learn"):
         check(f"{name} speaks OIDC", clients.get(name, {}).get("protocol") == "openid-connect")
 
     users = http_json(f"{BASE}/admin/realms/{REALM}/users?briefRepresentation=true&max=1000", token=token)
