@@ -205,11 +205,15 @@ def verify_html() -> dict[str, Any]:
     html = fetch_login_html()
     missing = [n for n in FORM_NEEDLES if n not in html]
     css_ok = f"/login/{THEME}/" in html and "css/login.css" in html
+    ds_header = 'data-testid="header"' in html
+    header_css = "css/header.css" in html and "css/shell.css" in html
     return {
         "css": css_ok,
+        "ds_header": ds_header,
+        "header_css": header_css,
         "form_missing": missing,
         "svasenkov_in_html": LIVE_STAFF in html.lower(),
-        "ok": css_ok and not missing and LIVE_STAFF not in html.lower(),
+        "ok": css_ok and ds_header and header_css and not missing and LIVE_STAFF not in html.lower(),
         "len": len(html),
     }
 

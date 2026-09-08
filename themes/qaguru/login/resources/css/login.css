@@ -15,6 +15,7 @@
   --qg-danger: #f87171;
   --qg-info: #61b6fb;
   --qg-control-height: 36px;
+  --qg-stack-gap: 12px;
   --qg-radius: 12px;
   --qg-radius-sm: 8px;
   --qg-font: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
@@ -35,24 +36,7 @@ body#keycloak-bg,
 }
 
 #kc-header-wrapper.pf-v5-c-brand {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  text-transform: none !important;
-  letter-spacing: 0.04em !important;
-  font-size: 22px !important;
-  font-weight: 600;
-  line-height: 1.2;
-  color: var(--qg-text) !important;
-  white-space: normal;
-}
-
-#kc-header-wrapper.pf-v5-c-brand::before {
-  content: "";
-  width: 48px;
-  height: 48px;
-  background: url("../img/qa-guru-logo.svg") no-repeat center / contain;
+  display: none;
 }
 
 .pf-v5-c-login__main {
@@ -121,6 +105,12 @@ body#keycloak-bg,
   border-radius: var(--qg-radius-sm);
 }
 
+/* Parent FTL only adds pf-v5-u-mt-md-on-md (≥768px). Below that the passkey
+   control sits on the Sign in border. Always keep a stack gap. */
+#authenticateWebAuthnButton {
+  margin-block-start: var(--qg-stack-gap) !important;
+}
+
 .pf-v5-c-button.pf-m-secondary:hover,
 #authenticateWebAuthnButton:hover,
 #social-github:hover {
@@ -133,11 +123,11 @@ body#keycloak-bg,
   border-color: var(--qg-border) !important;
 }
 
-a {
+.pf-v5-c-login a {
   color: var(--qg-info);
 }
 
-a:hover {
+.pf-v5-c-login a:hover {
   color: var(--qg-primary);
 }
 

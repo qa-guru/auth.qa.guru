@@ -1,0 +1,36 @@
+/* Keycloak shell around the DS header. Gap rules live here so a cached login.css
+   cannot keep Sign in / passkey stuck together. */
+
+.header,
+.header *,
+.header *::before,
+.header *::after {
+  box-sizing: border-box;
+}
+
+#kc-header {
+  display: none !important;
+}
+
+body#keycloak-bg,
+.login-pf body {
+  padding-top: var(--header-height, 40px);
+  box-sizing: border-box;
+}
+
+.pf-v5-c-login {
+  min-height: calc(100vh - var(--header-height, 40px));
+}
+
+/* Login has no burger JS: keep GitHub on the bar when DS hides tools at ≤768. */
+@media (max-width: 768px) {
+  .header .header__tools [data-testid="header-github"] {
+    display: inline-flex;
+  }
+}
+
+/* Parent FTL only adds pf-v5-u-mt-md-on-md (≥768). Always keep a stack gap. */
+#authenticateWebAuthnButton {
+  margin-top: 16px !important;
+  margin-block-start: 16px !important;
+}
