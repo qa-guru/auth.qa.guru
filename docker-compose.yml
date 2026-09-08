@@ -36,6 +36,7 @@ services:
       JAVA_OPTS_APPEND: -Dkeycloak.migration.replace-placeholders=true
     volumes:
       - ./realm:/opt/keycloak/data/import:ro
+      - ./themes/qaguru:/opt/keycloak/themes/qaguru:ro
     healthcheck:
       test:
         - CMD-SHELL

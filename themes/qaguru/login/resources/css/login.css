@@ -1,0 +1,153 @@
+/* QA Guru login overlay on keycloak.v2. Tokens from design-system css/tokens.css.
+   Form ids (#kc-form-login, #username, #password, #kc-login, #social-github,
+   #authenticateWebAuthnButton) stay with the parent FTL — do not restyle them away. */
+
+:root {
+  --qg-surface: #151414;
+  --qg-header-surface: #21201f;
+  --qg-surface-soft: #262523;
+  --qg-text: #f1f5f9;
+  --qg-text-muted: rgba(255, 255, 255, 0.45);
+  --qg-primary: #e8e4df;
+  --qg-primary-on: #1c1917;
+  --qg-accent: #0284c7;
+  --qg-border: rgba(255, 255, 255, 0.1);
+  --qg-danger: #f87171;
+  --qg-info: #61b6fb;
+  --qg-control-height: 36px;
+  --qg-radius: 12px;
+  --qg-radius-sm: 8px;
+  --qg-font: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+
+  --keycloak-logo-url: none;
+  --keycloak-bg-logo-url: none;
+  --keycloak-card-top-color: var(--qg-accent);
+}
+
+html.login-pf,
+html.login-pf body,
+body#keycloak-bg,
+.login-pf body {
+  background: var(--qg-surface) !important;
+  background-image: none !important;
+  color: var(--qg-text);
+  font-family: var(--qg-font);
+}
+
+#kc-header-wrapper.pf-v5-c-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-transform: none !important;
+  letter-spacing: 0.04em !important;
+  font-size: 22px !important;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--qg-text) !important;
+  white-space: normal;
+}
+
+#kc-header-wrapper.pf-v5-c-brand::before {
+  content: "";
+  width: 48px;
+  height: 48px;
+  background: url("../img/qa-guru-logo.svg") no-repeat center / contain;
+}
+
+.pf-v5-c-login__main {
+  background: var(--qg-header-surface);
+  border: 1px solid var(--qg-border);
+  border-radius: var(--qg-radius);
+  overflow: hidden;
+  color: var(--qg-text);
+}
+
+.pf-v5-c-login__main-header {
+  border-top: 4px solid var(--qg-accent);
+}
+
+#kc-page-title,
+.pf-v5-c-title,
+.pf-v5-c-form__label-text,
+.pf-v5-c-check__label,
+.pf-v5-c-login__main-footer-band-item {
+  color: var(--qg-text) !important;
+}
+
+.pf-v5-c-login__main-footer-band-item,
+.pf-v5-u-color-200 {
+  color: var(--qg-text-muted) !important;
+}
+
+.pf-v5-c-form-control,
+.pf-v5-c-form-control input,
+#username,
+#password,
+#login-select-toggle {
+  min-height: var(--qg-control-height);
+  background-color: var(--qg-surface-soft) !important;
+  color: var(--qg-text) !important;
+  border-color: var(--qg-border) !important;
+  caret-color: var(--qg-text);
+}
+
+.pf-v5-c-form-control input::placeholder {
+  color: var(--qg-text-muted);
+}
+
+#kc-login.pf-v5-c-button.pf-m-primary {
+  background-color: var(--qg-primary) !important;
+  color: var(--qg-primary-on) !important;
+  border-color: transparent !important;
+  min-height: var(--qg-control-height);
+  border-radius: var(--qg-radius-sm);
+  font-weight: 600;
+}
+
+#kc-login.pf-v5-c-button.pf-m-primary:hover,
+#kc-login.pf-v5-c-button.pf-m-primary:focus-visible {
+  background-color: #f1f5f9 !important;
+  color: var(--qg-primary-on) !important;
+}
+
+.pf-v5-c-button.pf-m-secondary,
+#authenticateWebAuthnButton,
+#social-github {
+  background-color: transparent !important;
+  color: var(--qg-text) !important;
+  border-color: var(--qg-border) !important;
+  min-height: var(--qg-control-height);
+  border-radius: var(--qg-radius-sm);
+}
+
+.pf-v5-c-button.pf-m-secondary:hover,
+#authenticateWebAuthnButton:hover,
+#social-github:hover {
+  background-color: var(--qg-surface-soft) !important;
+}
+
+.pf-v5-c-button.pf-m-control {
+  background-color: var(--qg-surface-soft) !important;
+  color: var(--qg-text) !important;
+  border-color: var(--qg-border) !important;
+}
+
+a {
+  color: var(--qg-info);
+}
+
+a:hover {
+  color: var(--qg-primary);
+}
+
+.pf-v5-c-alert.pf-m-danger,
+.pf-v5-c-helper-text__item-text.pf-m-error,
+.kc-feedback-text {
+  color: var(--qg-danger);
+}
+
+#kc-social-providers svg {
+  filter: none !important;
+  fill: currentColor;
+}

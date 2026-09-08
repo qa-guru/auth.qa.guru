@@ -22,6 +22,11 @@ fi
 
 install -d -m 755 "${ROOT}/realm"
 cp "${REALM_SRC}" "${ROOT}/realm/qaguru-realm.json"
+THEME_SRC="${WRAPPER}/dev/themes"
+if [[ -d "${THEME_SRC}/qaguru" ]]; then
+  mkdir -p "${ROOT}/themes"
+  rsync -a --delete "${THEME_SRC}/" "${ROOT}/themes/"
+fi
 
 ssh "${HOST}" "sudo mkdir -p '${REMOTE}' /etc/keycloak /etc/systemd/system && sudo chown qaguru:qaguru '${REMOTE}'"
 

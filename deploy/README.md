@@ -25,7 +25,7 @@ python3 ./deploy/smtp.py apply
 ```
 
 `bootstrap-host.sh` ставит ufw, PostgreSQL (пакет), Docker, nginx, certbot.
-`install.sh` кладёт env 600, создаёт роль БД, копирует realm из wrapper, поднимает Keycloak.
+`install.sh` кладёт env 600, создаёт роль БД, копирует realm и login-тему из wrapper, поднимает Keycloak.
 `configure-tls.sh` ставит LE и **обязательный** deploy-hook `nginx -t && systemctl reload nginx`.
 
 `backup-restore-test.sh` **дропает живую БД** — он для пустого realm (критерий P2a). На
@@ -42,6 +42,16 @@ python3 deploy/smtp.py apply
 python3 deploy/smtp.py test --email <один-свой-ящик>
 python3 deploy/smtp.py probe-reset    # одна учётка, IMAP, смена пароля, удаление
 python3 deploy/smtp.py send-reset <username>
+```
+
+## Login theme
+
+Общее лицо входа — тема `qaguru` (CSS overlay `keycloak.v2`). Клиенты не трогать. IdP не гасить: `apply` копирует файлы в живой контейнер и PUT `loginTheme`.
+
+```bash
+python3 deploy/theme.py apply
+python3 deploy/theme.py status
+python3 deploy/theme.py login-check   # staff-pilot, не svasenkov
 ```
 
 ## Off-box бэкап

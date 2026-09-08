@@ -137,6 +137,7 @@ def main() -> int:
     check("passkeys enabled", realm.get("webAuthnPolicyPasswordlessPasskeysEnabled") is True)
     check("RP ID is qa.guru", realm.get("webAuthnPolicyPasswordlessRpId") == "qa.guru", str(realm.get("webAuthnPolicyPasswordlessRpId")))
     check("password fallback kept", realm.get("resetPasswordAllowed") is True)
+    check("login theme is qaguru", realm.get("loginTheme") == "qaguru", str(realm.get("loginTheme")))
     smtp = realm.get("smtpServer") or {}
     check("smtp host set", bool(smtp.get("host")), str(smtp.get("host") or ""))
     check("smtp from set", bool(smtp.get("from")), str(smtp.get("from") or ""))

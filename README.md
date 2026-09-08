@@ -14,6 +14,7 @@ Production **Keycloak** IdP — [https://auth.qa.guru](https://auth.qa.guru)
 | БД | PostgreSQL **нативный пакет + systemd** (не контейнер: docker-published порты обходят ufw) |
 | Секреты | `/etc/keycloak/keycloak.env` root 600 — **не Vault** |
 | SMTP | сброс по username, From `noreply@qaguru.ru` (Beget). `deploy/smtp.py`. `loginWithEmailAllowed` выкл. |
+| Login theme | `qaguru` — `deploy/theme.py apply` (rsync + docker cp, без stop IdP) |
 | Passkey RP ID | `qa.guru` (общий родитель) |
 | Кэш | **`KC_CACHE=local`** — один узел не кластеризуется, а `ispn` при `network_mode: host` открывал JGroups 7800 / 57800 на публичном IP |
 | Бэкап | суточный `pg_dump` → Selectel S3 (`deploy/offbox.py`); off-box копия обязательна, её отсутствие валит юнит |
@@ -29,6 +30,7 @@ Production **Keycloak** IdP — [https://auth.qa.guru](https://auth.qa.guru)
 | [`deploy/`](deploy/) | bootstrap, DNS, TLS, backup, smoke |
 | [`deploy/offbox.py`](deploy/offbox.py) | off-box приёмник: provision / status / verify / restore-check |
 | [`deploy/smtp.py`](deploy/smtp.py) | SMTP сброса пароля: apply / test / probe-reset / send-reset (один username) |
+| [`deploy/theme.py`](deploy/theme.py) | Login-тема `qaguru`: apply / status / login-check. Без compose up |
 
 Секреты (не в git): `~/.config/auth-qa-guru/keycloak.env`.
 
