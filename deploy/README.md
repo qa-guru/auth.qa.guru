@@ -55,7 +55,7 @@ python3 deploy/smtp.py send-reset <username>
 
 ## Login theme
 
-Общее лицо входа — тема `qaguru` (CSS overlay `keycloak.v2`). Клиенты не трогать. IdP не гасить: `apply` копирует файлы в живой контейнер и PUT `loginTheme`.
+Лицо входа школы — тема `qaguru` (CSS overlay `keycloak.v2`). `master` — стоковый `keycloak.v2`: вход админа не должен выглядеть как школьный. Клиенты не трогать. IdP не гасить: `apply` копирует файлы в живой контейнер и PUT `loginTheme`.
 
 ```bash
 python3 deploy/theme.py apply

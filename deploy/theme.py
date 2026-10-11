@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Prod login theme qaguru — copy files, PUT loginTheme on qaguru and master.
+"""Prod login theme qaguru — copy files, PUT loginTheme=qaguru on qaguru; master stays stock keycloak.v2.
 
 Does not stop Keycloak. Does not PUT clients. Does not LDAP / P9. Does not change adminTheme.
 
@@ -28,6 +28,7 @@ except ImportError:
 REALM = "qaguru"
 MASTER = "master"
 THEME = "qaguru"
+MASTER_LOGIN_THEME = "keycloak.v2"
 AUTH_URL = os.environ.get("AUTH_URL", "https://auth.qa.guru").rstrip("/")
 HOST = os.environ.get("AUTH_SSH", "auth-qa-guru")
 REMOTE = "/opt/auth.qa.guru"
@@ -166,7 +167,7 @@ def client_ids(token: str, realm: str) -> list[str]:
     return sorted(c.get("clientId") or "" for c in clients)
 
 
-def apply_login_theme(env: dict[str, str], realm_name: str, *, school_guards: bool) -> dict[str, Any]:
+def apply_login_theme(env: dict[str, str], realm_name: str, *, school_guards: bool, theme: str = THEME) -> dict[str, Any]:
     token = keycloak_token(env)
     before = client_ids(token, realm_name)
     realm = kc("GET", f"/admin/realms/{realm_name}", token)
@@ -177,7 +178,7 @@ def apply_login_theme(env: dict[str, str], realm_name: str, *, school_guards: bo
             raise SystemExit(f"refusing {realm_name}: resetPasswordAllowed is off")
     for key in DROP_FROM_REALM_PUT:
         realm.pop(key, None)
-    realm["loginTheme"] = THEME
+    realm["loginTheme"] = theme
     kc("PUT", f"/admin/realms/{realm_name}", token, realm)
     after_realm = kc("GET", f"/admin/realms/{realm_name}", token)
     after = client_ids(token, realm_name)
@@ -217,18 +218,21 @@ def admin_login_url() -> str:
     )
 
 
-def verify_html(html: str, needles: tuple[str, ...]) -> dict[str, Any]:
+def verify_html(html: str, needles: tuple[str, ...], *, themed: bool = True) -> dict[str, Any]:
     missing = [n for n in needles if n not in html]
     css_ok = f"/login/{THEME}/" in html and "css/login.css" in html
     ds_header = 'data-testid="header"' in html
     header_css = "css/header.css" in html and "css/shell.css" in html
+    stock = f"/login/{MASTER_LOGIN_THEME}/" in html
+    look = (css_ok and ds_header and header_css) if themed else (stock and not (css_ok or ds_header or header_css))
     return {
         "css": css_ok,
         "ds_header": ds_header,
         "header_css": header_css,
+        "stock": stock,
         "form_missing": missing,
         "svasenkov_in_html": LIVE_STAFF in html.lower(),
-        "ok": css_ok and ds_header and header_css and not missing and LIVE_STAFF not in html.lower(),
+        "ok": look and not missing and LIVE_STAFF not in html.lower(),
         "len": len(html),
     }
 
@@ -237,11 +241,11 @@ def cmd_apply() -> int:
     copied = copy_theme_to_host()
     env = auth_env()
     school = apply_login_theme(env, REALM, school_guards=True)
-    master = apply_login_theme(env, MASTER, school_guards=False)
+    master = apply_login_theme(env, MASTER, school_guards=False, theme=MASTER_LOGIN_THEME)
     html = verify_html(fetch_login_html(school_login_url()), SCHOOL_NEEDLES)
-    admin_html = verify_html(fetch_login_html(admin_login_url()), ADMIN_NEEDLES)
+    admin_html = verify_html(fetch_login_html(admin_login_url()), ADMIN_NEEDLES, themed=False)
     result = {
-        "ok": school.get("loginTheme") == THEME and master.get("loginTheme") == THEME and html["ok"] and admin_html["ok"],
+        "ok": school.get("loginTheme") == THEME and master.get("loginTheme") == MASTER_LOGIN_THEME and html["ok"] and admin_html["ok"],
         "copied": copied,
         "qaguru": school,
         "master": master,
@@ -258,10 +262,10 @@ def cmd_status() -> int:
     school = kc("GET", f"/admin/realms/{REALM}", token)
     master = kc("GET", f"/admin/realms/{MASTER}", token)
     html = verify_html(fetch_login_html(school_login_url()), SCHOOL_NEEDLES)
-    admin_html = verify_html(fetch_login_html(admin_login_url()), ADMIN_NEEDLES)
+    admin_html = verify_html(fetch_login_html(admin_login_url()), ADMIN_NEEDLES, themed=False)
     health = ssh("curl -sf --max-time 5 http://127.0.0.1:9000/health/ready; echo; sudo docker inspect -f '{{.State.Running}} {{.Name}}' $(sudo docker ps -q --filter name=keycloak) | head -5")
     result = {
-        "ok": school.get("loginTheme") == THEME and master.get("loginTheme") == THEME and html["ok"] and admin_html["ok"],
+        "ok": school.get("loginTheme") == THEME and master.get("loginTheme") == MASTER_LOGIN_THEME and html["ok"] and admin_html["ok"],
         "loginTheme": school.get("loginTheme"),
         "masterLoginTheme": master.get("loginTheme"),
         "html": html,
