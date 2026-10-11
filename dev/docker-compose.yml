@@ -1,0 +1,108 @@
+# Keycloak IdP stand — auth.qa.guru (phase 11.qa-guru-identity, P1)
+# LOCAL ONLY. Prod host is a separate VM, ordered in P2 (ADR 017 § Хост).
+# Pin: Keycloak 26.7.3 — passkeys are officially supported since 26.4 (preview since 23.0).
+
+name: auth-qa-guru
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-keycloak}
+      POSTGRES_USER: ${POSTGRES_USER:-keycloak}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - auth_pgdata:/var/lib/postgresql/data
+    networks:
+      - auth_internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.7.3
+    # start-dev: stand only. Prod (P2) runs `start --optimized` behind nginx + LE.
+    command: ["start-dev", "--import-realm"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KC_BOOTSTRAP_ADMIN_USERNAME:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_BOOTSTRAP_ADMIN_PASSWORD:?set KC_BOOTSTRAP_ADMIN_PASSWORD in .env}
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-keycloak}
+      KC_DB_USERNAME: ${POSTGRES_USER:-keycloak}
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      KC_HEALTH_ENABLED: "true"
+      # Realm JSON keeps ${...} placeholders instead of secrets; these fill them at import.
+      JAVA_OPTS_APPEND: -Dkeycloak.migration.replace-placeholders=true
+      KC_WEBAUTHN_RP_ID: ${KC_WEBAUTHN_RP_ID:-localhost}
+      KC_GITHUB_CLIENT_ID: ${KC_GITHUB_CLIENT_ID:-github-oauth-app-not-configured}
+      KC_GITHUB_CLIENT_SECRET: ${KC_GITHUB_CLIENT_SECRET:-github-oauth-app-not-configured}
+      KC_CLIENT_SECRET_GRAFANA: ${KC_CLIENT_SECRET_GRAFANA:?set KC_CLIENT_SECRET_GRAFANA in .env}
+      KC_CLIENT_SECRET_JENKINS: ${KC_CLIENT_SECRET_JENKINS:?set KC_CLIENT_SECRET_JENKINS in .env}
+      KC_CLIENT_SECRET_GITLAB: ${KC_CLIENT_SECRET_GITLAB:?set KC_CLIENT_SECRET_GITLAB in .env}
+      KC_CLIENT_SECRET_TESTOPS: ${KC_CLIENT_SECRET_TESTOPS:?set KC_CLIENT_SECRET_TESTOPS in .env}
+      KC_CLIENT_SECRET_LEARN: ${KC_CLIENT_SECRET_LEARN:?set KC_CLIENT_SECRET_LEARN in .env}
+      KC_CLIENT_SECRET_AUTOTESTS_AI: ${KC_CLIENT_SECRET_AUTOTESTS_AI:?set KC_CLIENT_SECRET_AUTOTESTS_AI in .env}
+      KC_CLIENT_SECRET_PROVISIONING: ${KC_CLIENT_SECRET_PROVISIONING:?set KC_CLIENT_SECRET_PROVISIONING in .env}
+      # SMTP placeholders in realm JSON resolve only at --import-realm. Live stand
+      # is patched by scripts/apply-smtp.py (same pattern as apply-github-idp.py).
+      KC_SMTP_HOST: ${KC_SMTP_HOST:-mailpit}
+      KC_SMTP_PORT: ${KC_SMTP_PORT:-1025}
+      KC_SMTP_FROM: ${KC_SMTP_FROM:-keycloak@localhost}
+      KC_SMTP_FROM_DISPLAY: "${KC_SMTP_FROM_DISPLAY:-QA Guru}"
+      KC_SMTP_SSL: ${KC_SMTP_SSL:-false}
+      KC_SMTP_STARTTLS: ${KC_SMTP_STARTTLS:-false}
+      KC_SMTP_AUTH: ${KC_SMTP_AUTH:-false}
+      KC_SMTP_USER: ${KC_SMTP_USER:-}
+      KC_SMTP_PASSWORD: ${KC_SMTP_PASSWORD:-}
+    ports:
+      - "127.0.0.1:${KEYCLOAK_HTTP_PORT:-8543}:8080"
+    volumes:
+      # Only the realm file. user-profile-selenoid-token.json is User Profile SSOT
+      # (apply-user-profile.py), not a realm — Keycloak --import-realm would treat
+      # every JSON in this dir as a realm and crash on displayHeader.
+      - ./realm/qaguru-realm.json:/opt/keycloak/data/import/qaguru-realm.json:ro
+      - ./themes/qaguru:/opt/keycloak/themes/qaguru:ro
+    networks:
+      - auth_internal
+    healthcheck:
+      # UBI-micro image has no curl/wget; bash /dev/tcp is the supported probe.
+      test:
+        - CMD-SHELL
+        - >-
+          exec 3<>/dev/tcp/127.0.0.1/9000 &&
+          printf 'GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 &&
+          head -1 <&3 | grep -q '200'
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 40s
+
+  # Catcher for «Forgot password?» on the stand. SMTP is internal-only (1025);
+  # UI binds 127.0.0.1 and is not a registered HTTP-стенд — do not put it in Материалы.
+  mailpit:
+    image: axllent/mailpit:v1.27.4
+    ports:
+      - "127.0.0.1:${MAILPIT_UI_PORT:-8025}:8025"
+    networks:
+      - auth_internal
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+networks:
+  auth_internal:
+    driver: bridge
+
+volumes:
+  auth_pgdata:

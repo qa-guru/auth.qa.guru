@@ -1,0 +1,34 @@
+{
+  "groups": [
+    {
+      "name": "selenoid",
+      "displayHeader": "Selenoid",
+      "displayDescription": "Для фермы selenoid.qa.guru. Не короче 20 символов, без пробелов. Не используйте пароль от кабинета."
+    }
+  ],
+  "attributes": [
+    {
+      "name": "selenoidToken",
+      "displayName": "Токен Selenoid",
+      "multivalued": false,
+      "group": "selenoid",
+      "permissions": {
+        "view": ["admin", "user"],
+        "edit": ["admin", "user"]
+      },
+      "validations": {
+        "length": {
+          "min": 20,
+          "max": 255
+        },
+        "pattern": {
+          "pattern": "^\\S+$"
+        }
+      },
+      "annotations": {
+        "inputType": "text",
+        "inputHelperTextBefore": "Не короче 20 символов, без пробелов. Не используйте пароль от кабинета."
+      }
+    }
+  ]
+}

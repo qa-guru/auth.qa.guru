@@ -2,7 +2,7 @@
 # PostgreSQL is native systemd on the host, not this compose: docker-published
 # ports bypass ufw (load-sut graze). Host network + HTTP bind 127.0.0.1 so ufw
 # actually governs 80/443. Secrets come from /etc/keycloak/keycloak.env (root 600).
-# Realm JSON is copied at install from the monorepo wrapper's dev/realm/.
+# Realm JSON is staged into ./realm from dev/realm/ by deploy/install.sh.
 #
 # KC_CACHE=local is load-bearing: with network_mode host the default 'ispn'
 # cache opens JGroups 7800 and FD_SOCK2 57800 on the public IP. One node never

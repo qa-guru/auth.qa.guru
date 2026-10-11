@@ -1,5 +1,9 @@
 .env
 *.log
-realm/*.json
 __pycache__/
 *.pyc
+node_modules/
+dev/export/
+# Deploy staging: install.sh / theme.py fill these from dev/ before rsync to the VM.
+/realm/
+/themes/

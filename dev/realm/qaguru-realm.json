@@ -1,0 +1,654 @@
+{
+  "realm": "qaguru",
+  "displayName": "QA Guru",
+  "loginTheme": "qaguru",
+  "enabled": true,
+  "sslRequired": "external",
+
+  "registrationAllowed": false,
+  "registrationEmailAsUsername": false,
+  "loginWithEmailAllowed": false,
+  "duplicateEmailsAllowed": true,
+  "editUsernameAllowed": false,
+  "resetPasswordAllowed": true,
+  "verifyEmail": false,
+  "rememberMe": true,
+  "ssoSessionIdleTimeout": 172800,
+  "ssoSessionMaxLifespan": 604800,
+  "ssoSessionIdleTimeoutRememberMe": 604800,
+  "ssoSessionMaxLifespanRememberMe": 1209600,
+  "bruteForceProtected": true,
+  "permanentLockout": false,
+  "maxFailureWaitSeconds": 900,
+  "failureFactor": 10,
+  "passwordPolicy": "length(12) and notUsername(undefined)",
+
+  "smtpServer": {
+    "host": "${KC_SMTP_HOST}",
+    "port": "${KC_SMTP_PORT}",
+    "from": "${KC_SMTP_FROM}",
+    "fromDisplayName": "${KC_SMTP_FROM_DISPLAY}",
+    "ssl": "${KC_SMTP_SSL}",
+    "starttls": "${KC_SMTP_STARTTLS}",
+    "auth": "${KC_SMTP_AUTH}",
+    "user": "${KC_SMTP_USER}",
+    "password": "${KC_SMTP_PASSWORD}"
+  },
+
+  "internationalizationEnabled": true,
+  "supportedLocales": ["ru", "en"],
+  "defaultLocale": "ru",
+
+  "webAuthnPolicyPasswordlessRpEntityName": "QA Guru",
+  "webAuthnPolicyPasswordlessRpId": "${KC_WEBAUTHN_RP_ID}",
+  "webAuthnPolicyPasswordlessSignatureAlgorithms": ["ES256", "RS256"],
+  "webAuthnPolicyPasswordlessAttestationConveyancePreference": "none",
+  "webAuthnPolicyPasswordlessAuthenticatorAttachment": "not specified",
+  "webAuthnPolicyPasswordlessResidentKey": "required",
+  "webAuthnPolicyPasswordlessUserVerificationRequirement": "required",
+  "webAuthnPolicyPasswordlessCreateTimeout": 0,
+  "webAuthnPolicyPasswordlessAvoidSameAuthenticatorRegister": false,
+  "webAuthnPolicyPasswordlessAcceptableAaguids": [],
+  "webAuthnPolicyPasswordlessExtraOrigins": [],
+  "webAuthnPolicyPasswordlessPasskeysEnabled": true,
+
+  "groups": [
+    { "name": "staff", "path": "/staff", "subGroups": [] },
+    { "name": "mentors", "path": "/mentors", "subGroups": [] },
+    { "name": "students", "path": "/students", "subGroups": [] },
+    { "name": "contour", "path": "/contour", "subGroups": [] }
+  ],
+
+  "identityProviders": [
+    {
+      "alias": "github",
+      "displayName": "GitHub",
+      "providerId": "github",
+      "enabled": false,
+      "linkOnly": false,
+      "trustEmail": false,
+      "storeToken": false,
+      "addReadTokenRoleOnCreate": false,
+      "firstBrokerLoginFlowAlias": "first broker login",
+      "config": {
+        "clientId": "${KC_GITHUB_CLIENT_ID}",
+        "clientSecret": "${KC_GITHUB_CLIENT_SECRET}",
+        "defaultScope": "read:user user:email",
+        "syncMode": "IMPORT",
+        "caseSensitiveOriginalUsername": "false"
+      }
+    }
+  ],
+
+  "identityProviderMappers": [
+    {
+      "name": "github-login-to-username",
+      "identityProviderAlias": "github",
+      "identityProviderMapper": "github-user-attribute-mapper",
+      "config": {
+        "syncMode": "INHERIT",
+        "jsonField": "login",
+        "userAttribute": "githubLogin"
+      }
+    },
+    {
+      "name": "github-to-students",
+      "identityProviderAlias": "github",
+      "identityProviderMapper": "oidc-hardcoded-group-idp-mapper",
+      "config": {
+        "syncMode": "FORCE",
+        "group": "/students"
+      }
+    }
+  ],
+
+  "clients": [
+    {
+      "clientId": "sonar",
+      "name": "SonarQube Community Build — sonar.qa.guru",
+      "description": "Класс A, SAML. Community Build умеет только SAML, OIDC там убран. Group sync живёт лишь с JIT-provisioning и перечитывает группы при каждом входе — инвентарь групп до переключения обязателен (P6).",
+      "enabled": true,
+      "protocol": "saml",
+      "publicClient": true,
+      "frontchannelLogout": false,
+      "redirectUris": ["https://sonar.qa.guru/oauth2/callback/saml"],
+      "adminUrl": "https://sonar.qa.guru/oauth2/callback/saml",
+      "attributes": {
+        "saml.assertion.signature": "true",
+        "saml.server.signature": "true",
+        "saml.client.signature": "false",
+        "saml.force.post.binding": "true",
+        "saml.signature.algorithm": "RSA_SHA256",
+        "saml_name_id_format": "username",
+        "saml_force_name_id_format": "true"
+      },
+      "protocolMappers": [
+        {
+          "name": "login",
+          "protocol": "saml",
+          "protocolMapper": "saml-user-property-mapper",
+          "config": {
+            "user.attribute": "username",
+            "attribute.name": "login",
+            "attribute.nameformat": "Basic",
+            "friendly.name": "login"
+          }
+        },
+        {
+          "name": "name",
+          "protocol": "saml",
+          "protocolMapper": "saml-user-property-mapper",
+          "config": {
+            "user.attribute": "username",
+            "attribute.name": "name",
+            "attribute.nameformat": "Basic",
+            "friendly.name": "name"
+          }
+        },
+        {
+          "name": "email",
+          "protocol": "saml",
+          "protocolMapper": "saml-user-property-mapper",
+          "config": {
+            "user.attribute": "email",
+            "attribute.name": "email",
+            "attribute.nameformat": "Basic",
+            "friendly.name": "email"
+          }
+        },
+        {
+          "name": "groups",
+          "protocol": "saml",
+          "protocolMapper": "saml-group-membership-mapper",
+          "config": {
+            "full.path": "false",
+            "single": "false",
+            "attribute.name": "groups",
+            "attribute.nameformat": "Basic"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "https://jira.qa.guru",
+      "name": "jira",
+      "description": "Jira Software DC 11.3 SAML. NameID=username. ACS from live form.",
+      "enabled": true,
+      "protocol": "saml",
+      "publicClient": true,
+      "frontchannelLogout": false,
+      "rootUrl": "https://jira.qa.guru",
+      "baseUrl": "https://jira.qa.guru",
+      "adminUrl": "https://jira.qa.guru/plugins/servlet/samlconsumer",
+      "redirectUris": ["https://jira.qa.guru/plugins/servlet/samlconsumer"],
+      "defaultClientScopes": [],
+      "optionalClientScopes": [],
+      "attributes": {
+        "saml.assertion.signature": "true",
+        "saml.server.signature": "true",
+        "saml.client.signature": "false",
+        "saml.force.post.binding": "true",
+        "saml.signature.algorithm": "RSA_SHA256",
+        "saml_name_id_format": "username",
+        "saml_force_name_id_format": "true"
+      },
+      "protocolMappers": [
+        {
+          "name": "email",
+          "protocol": "saml",
+          "protocolMapper": "saml-user-property-mapper",
+          "config": {
+            "user.attribute": "email",
+            "attribute.name": "email",
+            "attribute.nameformat": "Basic",
+            "friendly.name": "email"
+          }
+        },
+        {
+          "name": "firstName",
+          "protocol": "saml",
+          "protocolMapper": "saml-user-property-mapper",
+          "config": {
+            "user.attribute": "firstName",
+            "attribute.name": "firstName",
+            "attribute.nameformat": "Basic",
+            "friendly.name": "firstName"
+          }
+        },
+        {
+          "name": "lastName",
+          "protocol": "saml",
+          "protocolMapper": "saml-user-property-mapper",
+          "config": {
+            "user.attribute": "lastName",
+            "attribute.name": "lastName",
+            "attribute.nameformat": "Basic",
+            "friendly.name": "lastName"
+          }
+        },
+        {
+          "name": "groups",
+          "protocol": "saml",
+          "protocolMapper": "saml-group-membership-mapper",
+          "config": {
+            "full.path": "false",
+            "single": "false",
+            "attribute.name": "groups",
+            "attribute.nameformat": "Basic"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "https://confluence.qa.guru",
+      "name": "confluence",
+      "description": "Confluence DC 10.2 SAML. NameID=username. ACS from live form. Not the jira client.",
+      "enabled": true,
+      "protocol": "saml",
+      "publicClient": true,
+      "frontchannelLogout": false,
+      "rootUrl": "https://confluence.qa.guru",
+      "baseUrl": "https://confluence.qa.guru",
+      "adminUrl": "https://confluence.qa.guru/plugins/servlet/samlconsumer",
+      "redirectUris": ["https://confluence.qa.guru/plugins/servlet/samlconsumer"],
+      "defaultClientScopes": [],
+      "optionalClientScopes": [],
+      "attributes": {
+        "saml.assertion.signature": "true",
+        "saml.server.signature": "true",
+        "saml.client.signature": "false",
+        "saml.force.post.binding": "true",
+        "saml.signature.algorithm": "RSA_SHA256",
+        "saml_name_id_format": "username",
+        "saml_force_name_id_format": "true"
+      },
+      "protocolMappers": [
+        {
+          "name": "email",
+          "protocol": "saml",
+          "protocolMapper": "saml-user-property-mapper",
+          "config": {
+            "user.attribute": "email",
+            "attribute.name": "email",
+            "attribute.nameformat": "Basic",
+            "friendly.name": "email"
+          }
+        },
+        {
+          "name": "firstName",
+          "protocol": "saml",
+          "protocolMapper": "saml-user-property-mapper",
+          "config": {
+            "user.attribute": "firstName",
+            "attribute.name": "firstName",
+            "attribute.nameformat": "Basic",
+            "friendly.name": "firstName"
+          }
+        },
+        {
+          "name": "lastName",
+          "protocol": "saml",
+          "protocolMapper": "saml-user-property-mapper",
+          "config": {
+            "user.attribute": "lastName",
+            "attribute.name": "lastName",
+            "attribute.nameformat": "Basic",
+            "friendly.name": "lastName"
+          }
+        },
+        {
+          "name": "groups",
+          "protocol": "saml",
+          "protocolMapper": "saml-group-membership-mapper",
+          "config": {
+            "full.path": "false",
+            "single": "false",
+            "attribute.name": "groups",
+            "attribute.nameformat": "Basic"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "grafana",
+      "name": "Grafana OSS — grafana.qa.guru",
+      "description": "Класс A, OIDC generic_oauth. Роль выводится из claim через role_attribute_path (JMESPath) — это есть в OSS. Team Sync только в Enterprise, команды Grafana остаются ручными. /students отсекается role_attribute_strict: в выражении для них роли нет.",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "${KC_CLIENT_SECRET_GRAFANA}",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": ["https://grafana.qa.guru/login/generic_oauth"],
+      "webOrigins": ["https://grafana.qa.guru"],
+      "attributes": {
+        "post.logout.redirect.uris": "https://grafana.qa.guru/login"
+      },
+      "protocolMappers": [
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "config": {
+            "full.path": "true",
+            "claim.name": "groups",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "introspection.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "multivalued": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "jenkins",
+      "name": "Jenkins — jenkins.qa.guru",
+      "description": "Класс A, OIDC плагин oic-auth. Группы приезжают в claim groups с ведущим слешем — в Role Strategy имя писать ровно так же (/students). Break-glass встроен в плагин (escapeHatch), отдельный костыль не нужен (P4).",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "${KC_CLIENT_SECRET_JENKINS}",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": ["https://jenkins.qa.guru/securityRealm/finishLogin"],
+      "webOrigins": ["https://jenkins.qa.guru"],
+      "attributes": {
+        "post.logout.redirect.uris": "https://jenkins.qa.guru/OicLogout##https://jenkins.qa.guru/"
+      },
+      "protocolMappers": [
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "config": {
+            "full.path": "true",
+            "claim.name": "groups",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "introspection.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "multivalued": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "gitlab",
+      "name": "GitLab CE — gitlab.qa.guru",
+      "description": "Класс A, OmniAuth openid_connect. Окно P5 даёт ТОЛЬКО аутентификацию: required_groups / admin_groups — Premium, а автосинхронизации членства по OIDC нет ни в одном тире. Членство в группах GitLab остаётся ручным.",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "${KC_CLIENT_SECRET_GITLAB}",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": ["https://gitlab.qa.guru/users/auth/openid_connect/callback"],
+      "webOrigins": ["https://gitlab.qa.guru"],
+      "protocolMappers": [
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "config": {
+            "full.path": "true",
+            "claim.name": "groups",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "introspection.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "multivalued": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "testops",
+      "name": "Allure TestOps — allure.qa.guru",
+      "description": "Класс A, OIDC (Spring OAuth2 client). Риск не в протоколе, а в лицензии: места именные. defaultRole: ROLE_GUEST обязателен, иначе первый SSO-вход разольёт платные места. Локальный /login/system — готовый break-glass.",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "${KC_CLIENT_SECRET_TESTOPS}",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": ["https://allure.qa.guru/login/oauth2/code/openid"],
+      "webOrigins": ["https://allure.qa.guru"],
+      "attributes": {
+        "post.logout.redirect.uris": "https://allure.qa.guru/login"
+      },
+      "protocolMappers": [
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "config": {
+            "full.path": "true",
+            "claim.name": "groups",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "introspection.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "multivalued": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "oauth2-proxy",
+      "name": "oauth2-proxy — class B edge (Selenoid UI)",
+      "description": "Класс B, OIDC + nginx auth_request. Один клиент на edge; cookie host-only на selenoid.qa.guru, не родительский .qa.guru. Prometheus в P3 оставлен loopback — второго vhost нет. Группы: только /staff. Break-glass — htpasswd oauth2-proxy, не студенческий selenoid.htpasswd.",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "${KC_CLIENT_SECRET_OAUTH2_PROXY}",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": ["https://selenoid.qa.guru/oauth2/callback"],
+      "webOrigins": ["https://selenoid.qa.guru"],
+      "attributes": {
+        "post.logout.redirect.uris": "https://selenoid.qa.guru/*"
+      },
+      "protocolMappers": [
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "config": {
+            "full.path": "true",
+            "claim.name": "groups",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "introspection.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "multivalued": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "learn",
+      "name": "learn.qa.guru — LMS (OIDC client + BFF stub)",
+      "description": "Класс A, OIDC BFF. LMS — клиент IdP, не второй Identity. Группы /staff /mentors /students. Стенд :3040, прод learn.qa.guru.",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "${KC_CLIENT_SECRET_LEARN}",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "https://learn.qa.guru/oauth2/callback",
+        "https://learn.qa.guru/login/oauth2/code/learn",
+        "http://127.0.0.1:3040/oauth2/callback",
+        "http://localhost:3040/oauth2/callback",
+        "http://127.0.0.1:3042/oauth2/callback",
+        "http://localhost:3042/oauth2/callback"
+      ],
+      "webOrigins": [
+        "https://learn.qa.guru",
+        "http://127.0.0.1:3040",
+        "http://localhost:3040",
+        "http://127.0.0.1:3042",
+        "http://localhost:3042"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "https://learn.qa.guru/##https://learn.qa.guru/authorization##http://127.0.0.1:3040/##http://localhost:3040/##http://127.0.0.1:3042/##http://localhost:3042/"
+      },
+      "protocolMappers": [
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "config": {
+            "full.path": "true",
+            "claim.name": "groups",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "introspection.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "autotests-ai",
+      "name": "autotests.ai — dest cloud (OIDC confidential)",
+      "description": "Dest cloud на autotests.ai. Класс A, OIDC, secret на бэкенде (IDP_CLIENT_SECRET), не VITE_. Не клиент learn. Redirect /oauth/idp/callback. Scope openid. Не GitHub.",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "${KC_CLIENT_SECRET_AUTOTESTS_AI}",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "rootUrl": "https://autotests.ai",
+      "baseUrl": "https://autotests.ai",
+      "redirectUris": [
+        "https://autotests.ai/oauth/idp/callback",
+        "https://stage.autotests.ai/oauth/idp/callback",
+        "http://127.0.0.1:8081/oauth/idp/callback",
+        "http://localhost:8081/oauth/idp/callback"
+      ],
+      "webOrigins": [
+        "https://autotests.ai",
+        "https://stage.autotests.ai",
+        "http://127.0.0.1:8081",
+        "http://localhost:8081"
+      ],
+      "attributes": {
+        "post.logout.redirect.uris": "https://autotests.ai/##https://stage.autotests.ai/##http://127.0.0.1:8081/##http://localhost:8081/"
+      },
+      "protocolMappers": [
+        {
+          "name": "preferred_username",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "config": {
+            "user.attribute": "username",
+            "claim.name": "preferred_username",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "introspection.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "config": {
+            "full.path": "true",
+            "claim.name": "groups",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "introspection.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "multivalued": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "svc-provisioning",
+      "name": "Сервисная учётка — provision-student-contour",
+      "description": "Машинный трафик: только client credentials, интерактивный вход выключен. Живёт вне групп людей (ADR 017 п. 10). Роли realm-management выдаются в P8, не здесь.",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "${KC_CLIENT_SECRET_PROVISIONING}",
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "redirectUris": [],
+      "webOrigins": []
+    },
+    {
+      "clientId": "svc-selenoid-token",
+      "name": "Сервисная учётка — selenoid token validator",
+      "description": "Машинный трафик Box1 loopback: только client credentials. Роли view-users и query-users, не manage-users. Не svc-provisioning.",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "${KC_CLIENT_SECRET_SELENOID_TOKEN}",
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "redirectUris": [],
+      "webOrigins": []
+    },
+    {
+      "clientId": "drawio",
+      "name": "drawio — class B edge (drawio.qa.guru)",
+      "description": "Класс B, OIDC + nginx auth_request. Один клиент на edge; cookie host-only на drawio.qa.guru, не родительский .qa.guru. Группы: только /staff. Публичный /pub/ идёт мимо auth_request в nginx.",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "${KC_CLIENT_SECRET_DRAWIO}",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "https://drawio.qa.guru/oauth2/callback"
+      ],
+      "webOrigins": [
+        "https://drawio.qa.guru"
+      ],
+      "attributes": {
+        "post.logout.redirect.uris": "https://drawio.qa.guru/*"
+      },
+      "protocolMappers": [
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "config": {
+            "full.path": "true",
+            "claim.name": "groups",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "introspection.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "multivalued": "true"
+          }
+        }
+      ]
+    }
+  ]
+}

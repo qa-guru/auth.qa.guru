@@ -54,8 +54,7 @@ ADMIN_NEEDLES = (
 )
 
 ROOT = Path(__file__).resolve().parents[1]
-WRAPPER = ROOT.parent
-THEME_SRC = WRAPPER / "dev" / "themes" / THEME
+THEME_SRC = ROOT / "dev" / "themes" / THEME
 
 
 def ssl_ctx() -> ssl.SSLContext:
@@ -282,7 +281,7 @@ def cmd_status() -> int:
 
 
 def cmd_login_check() -> int:
-    script = WRAPPER / "dev" / "scripts" / "theme-login-check.mjs"
+    script = ROOT / "dev" / "scripts" / "theme-login-check.mjs"
     proc = subprocess.run(["node", str(script), "--prod"], check=False)
     return proc.returncode
 

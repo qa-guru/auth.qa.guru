@@ -5,8 +5,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-WRAPPER="$(cd "${ROOT}/.." && pwd)"
-REALM_SRC="${WRAPPER}/dev/realm/qaguru-realm.json"
+REALM_SRC="${ROOT}/dev/realm/qaguru-realm.json"
 HOST="${AUTH_DEPLOY_HOST:-auth-qa-guru}"
 REMOTE="/opt/auth.qa.guru"
 ENV_FILE="${AUTH_ENV:-${HOME}/.config/auth-qa-guru/keycloak.env}"
@@ -22,7 +21,7 @@ fi
 
 install -d -m 755 "${ROOT}/realm"
 cp "${REALM_SRC}" "${ROOT}/realm/qaguru-realm.json"
-THEME_SRC="${WRAPPER}/dev/themes"
+THEME_SRC="${ROOT}/dev/themes"
 if [[ -d "${THEME_SRC}/qaguru" ]]; then
   mkdir -p "${ROOT}/themes"
   rsync -a --delete "${THEME_SRC}/" "${ROOT}/themes/"
@@ -34,6 +33,7 @@ rsync -az --delete \
   --exclude '.git/' \
   --exclude '.env' \
   --exclude 'deploy/' \
+  --exclude 'dev/' \
   "${ROOT}/" "${HOST}:${REMOTE}/"
 
 # root-owned 600 — qaguru cannot read it; systemd/docker compose run as root.

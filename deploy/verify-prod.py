@@ -30,7 +30,7 @@ except ImportError:
 
 REALM = "qaguru"
 BASE = os.environ.get("AUTH_URL", "https://auth.qa.guru")
-WRAPPER_REALM = Path(__file__).resolve().parents[2] / "dev" / "realm" / "qaguru-realm.json"
+REALM_FILE = Path(__file__).resolve().parents[1] / "dev" / "realm" / "qaguru-realm.json"
 ENV_FILE = Path(os.environ.get("AUTH_ENV", Path.home() / ".config/auth-qa-guru/keycloak.env"))
 PLACEHOLDER = re.compile(r"^\$\{[A-Z0-9_]+\}$")
 SECRET_KEYS = {"secret", "clientSecret", "value", "password"}
@@ -189,7 +189,7 @@ def main() -> int:
         closed, why = port_closed(host, port)
         check(f"jgroups {port} closed from internet", closed, why)
 
-    leaks = secrets_in_realm_file(WRAPPER_REALM) if WRAPPER_REALM.is_file() else ["realm file missing"]
+    leaks = secrets_in_realm_file(REALM_FILE) if REALM_FILE.is_file() else ["realm file missing"]
     check("no secrets in the tracked realm file", not leaks, ", ".join(leaks))
 
     width = max(len(n) for n, _, _ in checks)

@@ -1,16 +1,16 @@
 # Deploy auth.qa.guru
 
-Прод-хост Keycloak. Стенд `dev/` в wrapper **не** трогать. Демо-людей (`seed-stand-users.py`) на прод не возить.
+Прод-хост Keycloak. Стенд [`dev/`](../dev/README.md) отсюда **не** трогать. Демо-людей (`seed-stand-users.py`) на прод не возить.
 
 ## Prerequisites
 
 - SSH alias `auth-qa-guru` → VM из `provision-auth-qa-guru.py`
 - `~/.config/auth-qa-guru/keycloak.env` — `./deploy/init-env.sh`
-- Realm SSOT: `../dev/realm/qaguru-realm.json` (wrapper, не этот клон)
+- Realm SSOT: [`dev/realm/qaguru-realm.json`](../dev/realm/qaguru-realm.json), тема — [`dev/themes/qaguru/`](../dev/themes/qaguru/)
 
 ## Install order
 
-Из корня клона, **с ноутбука**:
+Из корня репозитория, **с ноутбука**:
 
 ```bash
 ./deploy/init-env.sh
@@ -25,7 +25,7 @@ python3 ./deploy/smtp.py apply
 ```
 
 `bootstrap-host.sh` ставит ufw, PostgreSQL (пакет), Docker, nginx, certbot.
-`install.sh` кладёт env 600, создаёт роль БД, копирует realm и login-тему из wrapper, поднимает Keycloak.
+`install.sh` кладёт env 600, создаёт роль БД, копирует realm и login-тему из `dev/` (промежуточные `realm/`, `themes/` в git не лежат), поднимает Keycloak.
 `configure-tls.sh` ставит LE и **обязательный** deploy-hook `nginx -t && systemctl reload nginx`.
 
 `backup-restore-test.sh` **дропает живую БД** — он для пустого realm (критерий P2a). На
