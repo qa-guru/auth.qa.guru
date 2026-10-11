@@ -147,22 +147,15 @@ def copy_theme_to_host() -> dict[str, str]:
     )
     compose_src = ROOT / "docker-compose.yml"
     subprocess.run(["rsync", "-az", str(compose_src), f"{HOST}:{REMOTE}/docker-compose.yml"], check=True)
-    # Live copy into the running container. Do not compose up / systemctl restart.
+    # Delivery is the :ro bind mount ./themes/{THEME} -> /opt/keycloak/themes/{THEME}:
+    # host rsync is live inside the container; docker cp into it fails (read-only).
+    # Do not compose up / systemctl restart.
     remote = ssh(
         f"""
 set -euo pipefail
 test -f '{REMOTE}/themes/{THEME}/login/theme.properties'
-cid="$(sudo docker ps --filter name={CONTAINER} --format '{{{{.ID}}}}' | head -1)"
-if [ -z "$cid" ]; then
-  cid="$(sudo docker ps --filter ancestor=auth-qa-guru-keycloak:26.7.3 --format '{{{{.ID}}}}' | head -1)"
-fi
-test -n "$cid"
-sudo docker exec "$cid" mkdir -p /opt/keycloak/themes/{THEME}
-sudo docker cp '{REMOTE}/themes/{THEME}/.' "$cid:/opt/keycloak/themes/{THEME}/"
-sudo docker exec "$cid" test -f /opt/keycloak/themes/{THEME}/login/theme.properties
-# Health must still be 200 — we did not restart.
 curl -sf --max-time 5 http://127.0.0.1:9000/health/ready >/dev/null
-echo "container:$cid"
+echo "host-mounted:{REMOTE}/themes/{THEME}"
 """
     )
     return {"host": f"{REMOTE}/themes/{THEME}", "docker": remote.strip()}
