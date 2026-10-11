@@ -6,7 +6,7 @@ Production **Keycloak** IdP — [https://auth.qa.guru](https://auth.qa.guru)
 
 | | |
 |--|--|
-| URL | [https://auth.qa.guru](https://auth.qa.guru) |
+| URL | [https://auth.qa.guru](https://auth.qa.guru) — корень → кабинет realm `qaguru` (тот же вход, что в Jenkins). Админка master (break-glass): [/admin/master/console/](https://auth.qa.guru/admin/master/console/) |
 | Репозиторий | [qa-guru/auth.qa.guru](https://github.com/qa-guru/auth.qa.guru) |
 | Движок | Keycloak **26.7.3** (`start --optimized`, не start-dev) |
 | Хост | отдельная облачная VM Selectel `SL1.2-4096-32` ru-1c, IP `95.213.181.139` — **не** Box2 / Box3 / Box4 |

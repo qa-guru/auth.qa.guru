@@ -45,6 +45,10 @@ server {
     access_log /var/log/nginx/auth.qa.guru.access.log;
     error_log  /var/log/nginx/auth.qa.guru.error.log;
 
+    location = / {
+        return 302 https://auth.qa.guru/realms/qaguru/account/;
+    }
+
     location / {
         include /etc/nginx/proxy_params;
         proxy_pass http://127.0.0.1:8080;

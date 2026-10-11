@@ -31,6 +31,15 @@ python3 ./deploy/smtp.py apply
 `backup-restore-test.sh` **дропает живую БД** — он для пустого realm (критерий P2a). На
 заполненном realm он refuse; restorability проверяется неразрушающе через `offbox.py restore-check`.
 
+## nginx vhost без TLS-цикла
+
+`configure-tls.sh` сначала ставит HTTP-only vhost и делает reload — на несколько секунд 443 пропадает. Правку только vhost катить точечно: бэкап в `/var/backups/`, `install`, `nginx -t`, reload; при FAIL `nginx -t` — вернуть бэкап.
+
+```bash
+scp nginx/auth.qa.guru.nginx auth-qa-guru:/tmp/
+ssh auth-qa-guru 'f=/etc/nginx/sites-available/auth.qa.guru; sudo cp -p $f /var/backups/auth.qa.guru.nginx.$(date +%Y%m%d%H%M%S) && sudo install -m 644 /tmp/auth.qa.guru.nginx $f && sudo nginx -t && sudo systemctl reload nginx'
+```
+
 ## SMTP (сброс пароля)
 
 Кнопка «Забыли пароль?» уже в realm. Секрет — `~/.config/auth-qa-guru/smtp.env` (600), его `apply` вливает в `keycloak.env` и на хост. Сброс **по username**; `loginWithEmailAllowed` не включать. Не рассылать на realm — только один username.
