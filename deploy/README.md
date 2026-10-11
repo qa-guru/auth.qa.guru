@@ -31,6 +31,16 @@ python3 ./deploy/smtp.py apply
 `backup-restore-test.sh` **дропает живую БД** — он для пустого realm (критерий P2a). На
 заполненном realm он refuse; restorability проверяется неразрушающе через `offbox.py restore-check`.
 
+## Админка Keycloak
+
+Вход в `master` и консоли nginx отдаёт только самой VM, снаружи — 403. Открывать одной командой:
+
+```bash
+./deploy/admin.sh
+```
+
+Скрипт поднимает SOCKS-туннель `ssh -D` до VM и открывает через него отдельный профиль Chrome; закрыл браузер (Cmd+Q) — туннель закрылся. Снаружи открыты только API `/admin/realms/…` (Box1, provisioning.qa.guru, `svc-provisioning` — по токену) и `/realms/master/protocol/openid-connect/token` (deploy-скрипты в девяти репо; пароль `admin` — 32 случайных символа).
+
 ## nginx vhost без TLS-цикла
 
 `configure-tls.sh` сначала ставит HTTP-only vhost и делает reload — на несколько секунд 443 пропадает. Правку только vhost катить точечно: бэкап в `/var/backups/`, `install`, `nginx -t`, reload; при FAIL `nginx -t` — вернуть бэкап.

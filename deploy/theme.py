@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shlex
 import ssl
 import subprocess
 import sys
@@ -200,6 +201,10 @@ def fetch_login_html(url: str) -> str:
         return resp.read().decode("utf-8", "replace")
 
 
+def fetch_login_html_via_vm(url: str) -> str:
+    return ssh(f"curl -sS --fail --max-time 30 -H 'Accept: text/html' {shlex.quote(url)}")
+
+
 def school_login_url() -> str:
     account = f"{AUTH_URL}/realms/{REALM}/account/"
     return (
@@ -243,7 +248,7 @@ def cmd_apply() -> int:
     school = apply_login_theme(env, REALM, school_guards=True)
     master = apply_login_theme(env, MASTER, school_guards=False, theme=MASTER_LOGIN_THEME)
     html = verify_html(fetch_login_html(school_login_url()), SCHOOL_NEEDLES)
-    admin_html = verify_html(fetch_login_html(admin_login_url()), ADMIN_NEEDLES, themed=False)
+    admin_html = verify_html(fetch_login_html_via_vm(admin_login_url()), ADMIN_NEEDLES, themed=False)
     result = {
         "ok": school.get("loginTheme") == THEME and master.get("loginTheme") == MASTER_LOGIN_THEME and html["ok"] and admin_html["ok"],
         "copied": copied,
@@ -262,7 +267,7 @@ def cmd_status() -> int:
     school = kc("GET", f"/admin/realms/{REALM}", token)
     master = kc("GET", f"/admin/realms/{MASTER}", token)
     html = verify_html(fetch_login_html(school_login_url()), SCHOOL_NEEDLES)
-    admin_html = verify_html(fetch_login_html(admin_login_url()), ADMIN_NEEDLES, themed=False)
+    admin_html = verify_html(fetch_login_html_via_vm(admin_login_url()), ADMIN_NEEDLES, themed=False)
     health = ssh("curl -sf --max-time 5 http://127.0.0.1:9000/health/ready; echo; sudo docker inspect -f '{{.State.Running}} {{.Name}}' $(sudo docker ps -q --filter name=keycloak) | head -5")
     result = {
         "ok": school.get("loginTheme") == THEME and master.get("loginTheme") == MASTER_LOGIN_THEME and html["ok"] and admin_html["ok"],

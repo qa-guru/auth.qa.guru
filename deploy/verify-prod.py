@@ -78,6 +78,14 @@ def http_json(url: str, *, token: str | None = None, data: bytes | None = None, 
     return json.loads(raw) if raw else None
 
 
+def http_status(url: str) -> int:
+    try:
+        with urllib.request.urlopen(urllib.request.Request(url), timeout=30, context=ssl_ctx()) as resp:
+            return resp.status
+    except urllib.error.HTTPError as exc:
+        return exc.code
+
+
 def port_closed(host: str, port: int, timeout: float = 5.0) -> tuple[bool, str]:
     """True when a TCP connect does not succeed. Run from off-host on purpose:
     `ss` on the box proves the listener is gone, this proves the internet agrees."""
@@ -168,6 +176,13 @@ def main() -> int:
     )
     missing_pilots = PILOT - names
     check("pilot people still present", not missing_pilots, ", ".join(sorted(missing_pilots)))
+
+    master_signin = http_status(f"{BASE}/realms/master/protocol/openid-connect/auth?client_id=security-admin-console")
+    check("master sign-in closed from internet", master_signin == 403, f"HTTP {master_signin}")
+    console = http_status(f"{BASE}/admin/master/console/")
+    check("admin console closed from internet", console == 403, f"HTTP {console}")
+    admin_api = http_status(f"{BASE}/admin/realms/{REALM}")
+    check("admin REST open for service accounts", admin_api == 401, f"HTTP {admin_api}")
 
     host = urllib.parse.urlsplit(BASE).hostname or "auth.qa.guru"
     for port in JGROUPS_PORTS:

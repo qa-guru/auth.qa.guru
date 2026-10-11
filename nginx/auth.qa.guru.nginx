@@ -59,5 +59,29 @@ server {
         proxy_set_header X-Forwarded-Port $server_port;
         proxy_set_header X-Forwarded-Host $host;
         proxy_buffering off;
+
+        location ^~ /realms/master/ {
+            allow 127.0.0.1;
+            allow ::1;
+            allow 95.213.181.139;
+            deny all;
+            proxy_pass http://127.0.0.1:8080;
+        }
+
+        location = /realms/master/protocol/openid-connect/token {
+            proxy_pass http://127.0.0.1:8080;
+        }
+
+        location ^~ /admin/ {
+            allow 127.0.0.1;
+            allow ::1;
+            allow 95.213.181.139;
+            deny all;
+            proxy_pass http://127.0.0.1:8080;
+        }
+
+        location ^~ /admin/realms/ {
+            proxy_pass http://127.0.0.1:8080;
+        }
     }
 }
